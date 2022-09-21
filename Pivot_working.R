@@ -1,3 +1,4 @@
+
 library(shiny)
 library(leaflet)
 library(sf)
@@ -48,7 +49,7 @@ createMap <- function() {
 Land_Use_Categories<- c('Residential', 'Commercial', 'Industrial', 'Institutional', 'Recreational')
 landuse_cat <- data.frame(Land_Use_Categories)
 color_palette_list = c("#ffff99", "#e31a1c", "#6a3d9a", "#a6cee3", "#b2df8a")
-landuse_pallete <- colorBin(palette = color_palette_list, domain=1:length(Land_Use_Categories), na.color = "#FFFFFF00")
+cat_pallete <- colorBin(palette = color_palette_list, domain=1:length(Land_Use_Categories), na.color = "#FFFFFF00")
 ###use updateradiobutton, and text input https://shiny.rstudio.com/reference/shiny/0.14/updateRadioButtons.html
 
 # Define UI for application that draws a histogram
@@ -58,14 +59,12 @@ ui <- dashboardPage(
   dashboardHeader(title = "Pivot ", titleWidth = 250),
   dashboardSidebar(
     width = 250,
-    sidebarMenu(
-      radioButtons("Land_Use_Cat", label = h3("Radio buttons"),
-                   choices = list("Residential" = 1,  "Commercial" = 2,    "Industrial" = 3,    "Institutional" = 4, "Recreational" = 5 ), 
-                   selected = 1),
-      downloadLink("download_shp", "Download Map"),
+    sidebarMenu("Radio Button Panel",
+                   radioButtons("labradio", label = "New Label",choices=values),
       
       hr(),
-      fluidRow(column(3, verbatimTextOutput("value"))),
+      textInput("textinp","Create New Label", placeholder = NULL),
+      actionButton("labbutton","Create"),
       
       
       
@@ -104,7 +103,27 @@ ui <- dashboardPage(
 )
 
 
-server <- function(input, output) {
+server <- function(input, output, session) {
+  
+  ##Start with none
+  value <- c("None" = NA)
+  #Land_Use_Categories<- c('Residential', 'Commercial', 'Industrial', 'Institutional', 'Recreational')
+  #cat <- data.frame(value)
+  #color_palette_list = c("#ffff99", "#e31a1c", "#6a3d9a", "#a6cee3", "#b2df8a")
+  #cat_pallete <- colorBin(palette = color_palette_list, domain=1:length(value), na.color = "#FFFFFF00")
+  
+  
+  ###observe user categories input
+  rv <- reactiveValues(values=value)
+  observeEvent(input$labbutton,{
+    req(input$textinp)
+    rv$values <- c(rv$values, input$textinp)
+    updateRadioButtons(session,inputId ="labradio",choices=rv$values)
+    cat <- data.frame(value)
+    color_palette_list = c("#ffff99", "#e31a1c", "#6a3d9a", "#a6cee3", "#b2df8a")
+    cat_pallete <- colorBin(palette = color_palette_list, domain=1:length(value), na.color = "#FFFFFF00")
+    
+  })
   
   observeEvent(input$go, {
     screenshot(id="PPGISmap")
@@ -114,11 +133,11 @@ server <- function(input, output) {
     createMap() %>%
       addPolygons(
         data=VECTOR_FILE,
-        layerId=~NAME,
+        layerId=~PPGIS_CODE,
         #group='base_polygons',
         weight=1,
         fillOpacity=0, 
-        fillColor = ~landuse_pallete(SELECTED)
+        fillColor = ~cat_pallete(SELECTED)
       ) %>%
       addTiles(group = "OSM (default)") %>%
       addProviderTiles(providers$Stamen.Toner, group = "Toner") %>%
@@ -134,32 +153,17 @@ server <- function(input, output) {
         options = layersControlOptions(collapsed = FALSE)) %>%
       addLegend(
         # pal=landuse_pallete,
-        values=landuse_cat$Land_Use_Categories,
+        values=cat$value,
         position='bottomleft',
         title="Legend of Landuse Categories",
         opacity=0.6,
         colors = color_palette_list,
-        labels = Land_Use_Categories
+        labels = value
       )
   })
   
-  # filter polygon for map based on location selected
-  # shp_selected <- reactive({
-  #   req(input$name)
-  #   nc %>% filter(NAME == input$name)       
-  # })
-  # 
-  # output$map <- renderTmap({
-  #   tmap_mode("view")
-  #   tm_shape(nc) +
-  #     tm_polygons() +
-  #     tm_shape(shp_selected()) +
-  #     tm_fill(col = "blue", alpha = 0.3)
-  #   
-  # })
-  
- 
 
+  
   # just testing here
   observeEvent(input$PPGISmap_shape_click, {
     polygon_clicked <- input$PPGISmap_shape_click
@@ -167,11 +171,11 @@ server <- function(input, output) {
     
     if (is.null(polygon_clicked)) { return() }
     
-    row_idx <- which(VECTOR_FILE$NAME == polygon_clicked$id)
-  
+    row_idx <- which(VECTOR_FILE$PPGIS_CODE == polygon_clicked$id)
+    
     is_selected <- VECTOR_FILE[row_idx, ]$SELECTED
     
-     
+    
     if (!is.na(is_selected)) { # if polygon is already selected
       
       VECTOR_FILE[row_idx, ]$SELECTED <<- NA # zeros out polygon selected value
@@ -182,14 +186,14 @@ server <- function(input, output) {
       
       # redraws polygon without any color (base settings)
       leafletProxy(mapId='PPGISmap') %>%
-        removeShape(VECTOR_FILE[row_idx, ]$NAME) %>%
+        removeShape(VECTOR_FILE[row_idx, ]$PPGIS_CODE) %>%
         addPolygons(
           data=VECTOR_FILE_selected,
-          layerId=~NAME,
+          layerId=~PPGIS_CODE,
           weight=1,
           fillOpacity=0,
-          fillColor = ~landuse_pallete(SELECTED)
-          ) 
+          fillColor = ~cat_pallete(SELECTED)
+        ) 
       
       print(VECTOR_FILE_selected)
     }
@@ -211,18 +215,18 @@ server <- function(input, output) {
       leafletProxy(mapId='PPGISmap') %>%
         addPolygons(
           data=VECTOR_FILE,
-          layerId=~NAME,
+          layerId=~PPGIS_CODE,
           weight=1,
           fillOpacity=0.5,
-          fillColor = ~landuse_pallete(SELECTED)
+          fillColor = ~cat_pallete(SELECTED)
         )
       print(VECTOR_FILE$SELECTED)
     }
     
     
-  
     
- 
+    
+    
     output$download_shp <- downloadHandler(
       filename <- function() {
         "Data_shpExport.zip"
@@ -257,8 +261,8 @@ server <- function(input, output) {
       }  
     )
     
-
-    })
+    
+  })
   
   
   
@@ -268,4 +272,5 @@ server <- function(input, output) {
 }
 
 shinyApp(ui, server)
+
 
