@@ -123,8 +123,12 @@ server <- function(input, output, session) {
   rv <- reactiveValues(values=value)
   observeEvent(input$labbutton,{
     req(input$textinp)
-    rv$values <- c(rv$values, input$textinp)
+    newVal <- length(rv$values)  
+    names(newVal) <- input$textinp
+    rv$values <- c(rv$values, newVal)
     updateRadioButtons(session,inputId ="radioInt",choices=rv$values)
+    
+    print(rv$values)
     #cat <- data.frame(value)
     #color_palette_list = c("#ffff99", "#e31a1c", "#6a3d9a", "#a6cee3", "#b2df8a")
     #cat_pallete <- colorBin(palette = color_palette_list, domain=1:length(value), na.color = "#FFFFFF00")
@@ -279,6 +283,5 @@ server <- function(input, output, session) {
 }
 
 shinyApp(ui, server)
-
 
 
