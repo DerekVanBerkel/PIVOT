@@ -17,14 +17,15 @@ library(readr)
 library(formattable)
 
 
-
+values <- c("None" = NA)
 #ppgis <- function{data = ,  }
 
 #load shapefile
-VECTOR_FILE <- st_read(system.file("shape/nc.shp", package="sf")) %>% 
-  dplyr::mutate(PPGIS_CODE = row_number(),SELECTED = NA) %>% 
+VECTOR_FILE <- st_read(system.file("shape/nc.shp", package="sf")) %>%
+  dplyr::mutate(PPGIS_CODE = as.character(row_number()),SELECTED = NA) %>%
   dplyr::select(PPGIS_CODE, SELECTED, geometry) %>% ## everything()
   sf::st_transform(4326)
+
 
 
 base_map_bounds <- VECTOR_FILE %>% 
@@ -61,8 +62,18 @@ ui <- dashboardPage(
     width = 250,
     sidebarMenu(
       radioButtons("Land_Use_Cat", label = h3("Radio buttons"),
-                   choices = list("Residential" = 1,  "Commercial" = 2,    "Industrial" = 3,    "Institutional" = 4, "Recreational" = 5 ), 
+                   choices = list("Residential" = 1,  "Commercial" = 2,    "Industrial" = 3,    "Institutional" = 4, "Recreational" = 5 ),
                    selected = 1),
+      
+      
+      
+      radioButtons("radioInt", label = "New Label",choices=values),
+      
+      hr(),
+      fluidRow(column(3, verbatimTextOutput("value"))),
+      textInput("textinp","Create New Label", placeholder = NULL),
+      actionButton("labbutton","Create"),
+      
       downloadLink("download_shp", "Download Map"),
       
       hr(),
@@ -105,7 +116,21 @@ ui <- dashboardPage(
 )
 
 
-server <- function(input, output) {
+server <- function(input, output, session) {
+  
+  ###observe user categories input
+  value <- c("None" = NA)
+  rv <- reactiveValues(values=value)
+  observeEvent(input$labbutton,{
+    req(input$textinp)
+    rv$values <- c(rv$values, input$textinp)
+    updateRadioButtons(session,inputId ="radioInt",choices=rv$values)
+    #cat <- data.frame(value)
+    #color_palette_list = c("#ffff99", "#e31a1c", "#6a3d9a", "#a6cee3", "#b2df8a")
+    #cat_pallete <- colorBin(palette = color_palette_list, domain=1:length(value), na.color = "#FFFFFF00")
+    
+  })
+  
   
   observeEvent(input$go, {
     screenshot(id="PPGISmap")
@@ -118,7 +143,8 @@ server <- function(input, output) {
         layerId=~PPGIS_CODE,
         #group='base_polygons',
         weight=1,
-        fillOpacity=0
+        fillOpacity=0, 
+        fillColor = ~landuse_pallete(SELECTED)
       ) %>%
       addTiles(group = "OSM (default)") %>%
       addProviderTiles(providers$Stamen.Toner, group = "Toner") %>%
@@ -143,20 +169,19 @@ server <- function(input, output) {
       )
   })
   
-
+  
   
   # just testing here
   observeEvent(input$PPGISmap_shape_click, {
     polygon_clicked <- input$PPGISmap_shape_click
-    #print(polygon_clicked)
+    print(polygon_clicked)
     
     if (is.null(polygon_clicked)) { return() }
     
     row_idx <- which(VECTOR_FILE$PPGIS_CODE == polygon_clicked$id)
     
-    is_selected <- VECTOR_FILE[row_idx, ]$SELECTED  
+    is_selected <- VECTOR_FILE[row_idx, ]$SELECTED
     
-    print(is_selected)
     
     if (!is.na(is_selected)) { # if polygon is already selected
       
@@ -168,20 +193,20 @@ server <- function(input, output) {
       
       # redraws polygon without any color (base settings)
       leafletProxy(mapId='PPGISmap') %>%
-        removeShape(VECTOR_FILE[row_idx, ]) %>%
+        removeShape(VECTOR_FILE[row_idx, ]$PPGIS_CODE) %>%
         addPolygons(
           data=VECTOR_FILE_selected,
           layerId=~PPGIS_CODE,
           weight=1,
-          fillOpacity=0#,
-          #fillColor = #FFFFFF00
+          fillOpacity=0,
+          fillColor = ~landuse_pallete(SELECTED)
         ) 
       
-      #print(VECTOR_FILE_selected)
+      print(VECTOR_FILE_selected)
     }
     else { # if polygon is not selected
       landuse_palette_code_selected <- as.numeric(input$Land_Use_Cat)
-      #print(landuse_palette_code_selected)
+      print(landuse_palette_code_selected)
       
       # Get current table selected
       #row_clicked <- input$groups_table_cell_clicked
@@ -254,5 +279,6 @@ server <- function(input, output) {
 }
 
 shinyApp(ui, server)
+
 
 
