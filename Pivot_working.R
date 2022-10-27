@@ -1,5 +1,4 @@
 
-
 library(shiny)
 library(leaflet)
 library(sf)
@@ -51,7 +50,8 @@ createMap <- function() {
 Land_Use_Categories<- c('Residential', 'Commercial', 'Industrial', 'Institutional', 'Recreational')
 landuse_cat <- data.frame(Land_Use_Categories)
 color_palette_list = c("00FFFFFF", "#ffff99", "#e31a1c", "#6a3d9a", "#a6cee3", "#b2df8a")
-landuse_pallete <- colorBin(palette = color_palette_list, domain=1:length(Land_Use_Categories), na.color = "#FFFFFF00")
+color_palette_map = c("#ffff99", "#e31a1c", "#6a3d9a", "#a6cee3", "#b2df8a")
+landuse_pallete <- colorBin(palette = color_palette_map, domain=1:length(Land_Use_Categories), na.color = "#FFFFFF00")
 ###use updateradiobutton, and text input https://shiny.rstudio.com/reference/shiny/0.14/updateRadioButtons.html
 
 # Define UI for application that draws a histogram
@@ -62,9 +62,9 @@ ui <- dashboardPage(
   dashboardSidebar(
     width = 250,
     sidebarMenu(
-      radioButtons("Land_Use_Cat", label = h3("Radio buttons"),
-                   choices = list("Residential" = 1,  "Commercial" = 2,    "Industrial" = 3,    "Institutional" = 4, "Recreational" = 5 ),
-                   selected = 1),
+      # radioButtons("Land_Use_Cat", label = h3("Radio buttons"),
+      #              choices = list("Residential" = 1,  "Commercial" = 2,    "Industrial" = 3,    "Institutional" = 4, "Recreational" = 5 ),
+      #              selected = 1),
       
       
       
@@ -126,7 +126,7 @@ server <- function(input, output, session) {
   
   observeEvent(input$labbutton,{
     req(input$textinp)
-    newVal <- length(rv$value)
+    newVal <- length(rv$values)  
     names(newVal) <- input$textinp
     rv$values <- c(rv$values, newVal)
     updateRadioButtons(session,inputId ="radioInt",choices=rv$values)
@@ -169,7 +169,7 @@ server <- function(input, output, session) {
         position='bottomleft',
         title="Legend of Landuse Categories",
         opacity=0.6,
-        colors = color_palette_list[length(values)],
+        colors = color_palette_list[0:length(values)],
         labels = names(values)
       )
   })
@@ -190,7 +190,7 @@ server <- function(input, output, session) {
         position='bottomleft',
         title="Legend of Landuse Categories",
         opacity=0.6,
-        colors = color_palette_list[1:length(newMapLgd)],
+        colors = color_palette_list[0:length(newMapLgd)],
         labels = names(newMapLgd)
       )
     }
@@ -231,7 +231,7 @@ server <- function(input, output, session) {
       print(VECTOR_FILE_selected)
     }
     else { # if polygon is not selected
-      landuse_palette_code_selected <- as.numeric(input$Land_Use_Cat)
+      landuse_palette_code_selected <- as.numeric(input$radioInt)
       print(landuse_palette_code_selected)
       
       # Get current table selected
@@ -305,6 +305,8 @@ server <- function(input, output, session) {
 }
 
 shinyApp(ui, server)
+
+
 
 
 
