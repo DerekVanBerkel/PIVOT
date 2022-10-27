@@ -1,4 +1,5 @@
 
+
 library(shiny)
 library(leaflet)
 library(sf)
@@ -49,7 +50,7 @@ createMap <- function() {
 #Land Use categories and corresponding colors
 Land_Use_Categories<- c('Residential', 'Commercial', 'Industrial', 'Institutional', 'Recreational')
 landuse_cat <- data.frame(Land_Use_Categories)
-color_palette_list = c("#ffff99", "#e31a1c", "#6a3d9a", "#a6cee3", "#b2df8a")
+color_palette_list = c("00FFFFFF", "#ffff99", "#e31a1c", "#6a3d9a", "#a6cee3", "#b2df8a")
 landuse_pallete <- colorBin(palette = color_palette_list, domain=1:length(Land_Use_Categories), na.color = "#FFFFFF00")
 ###use updateradiobutton, and text input https://shiny.rstudio.com/reference/shiny/0.14/updateRadioButtons.html
 
@@ -121,18 +122,18 @@ server <- function(input, output, session) {
   ###observe user categories input
   value <- c("None" = NA)
   rv <- reactiveValues(values=value)
+  print(rv)
+  
   observeEvent(input$labbutton,{
     req(input$textinp)
-    newVal <- length(rv$values)  
+    newVal <- length(rv$value)
     names(newVal) <- input$textinp
     rv$values <- c(rv$values, newVal)
     updateRadioButtons(session,inputId ="radioInt",choices=rv$values)
-    
-    print(rv$values)
     #cat <- data.frame(value)
     #color_palette_list = c("#ffff99", "#e31a1c", "#6a3d9a", "#a6cee3", "#b2df8a")
     #cat_pallete <- colorBin(palette = color_palette_list, domain=1:length(value), na.color = "#FFFFFF00")
-    
+    print(rv$values)
   })
   
   
@@ -164,16 +165,37 @@ server <- function(input, output, session) {
         options = layersControlOptions(collapsed = FALSE)) %>%
       addLegend(
         # pal=landuse_pallete,
-        values=landuse_cat$Land_Use_Categories,
+        values=values,
         position='bottomleft',
         title="Legend of Landuse Categories",
         opacity=0.6,
-        colors = color_palette_list,
-        labels = Land_Use_Categories
+        colors = color_palette_list[length(values)],
+        labels = names(values)
       )
   })
   
-  
+
+  observe({
+    proxy <- leafletProxy("PPGISmap", data = VECTOR_FILE)
+    
+    # Remove any existing legend, and only if the legend is
+    # enabled, create a new one.
+    proxy %>% clearControls()
+    if (input$labbutton) {
+      newMapLgd <- rv$values
+      print(newMapLgd)
+      proxy %>% addLegend(
+        # pal=landuse_pallete,
+        values=newMapLgd,
+        position='bottomleft',
+        title="Legend of Landuse Categories",
+        opacity=0.6,
+        colors = color_palette_list[1:length(newMapLgd)],
+        labels = names(newMapLgd)
+      )
+    }
+  })
+    
   
   # just testing here
   observeEvent(input$PPGISmap_shape_click, {
@@ -283,5 +305,8 @@ server <- function(input, output, session) {
 }
 
 shinyApp(ui, server)
+
+
+
 
 
