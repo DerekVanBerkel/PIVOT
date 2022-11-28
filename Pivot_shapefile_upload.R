@@ -128,7 +128,7 @@ server <- function(input, output) {
         as.character()
     } 
     else {
-      if(length(input$filemap$datapath > 1)){  # if shapefile
+      if(length(input$filemap$datapath ) > 1){  # if shapefile
         # the upload gives the files unique names, so read_sf won't recognize them as belonging to the same shapefile
         for (path in input$filemap$datapath){
           newpath <- sub('.\\.', 'shapefile.', path)
