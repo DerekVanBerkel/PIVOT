@@ -72,7 +72,7 @@ ui <- dashboardPage(
       fileInput("filemap", 
                 "Choose shapefile file type",
                 multiple = TRUE,
-                accept = c(".shp",".dbf",".sbn",".sbx",".shx",".prj", ".gpkg", ".geojson")), 
+                accept = c(".shp",".dbf",".sbn",".sbx",".shx",".prj", ".gpkg", ".geojson", ".zip")), 
 
       actionButton("clear_map", "Reload Map"),
       HTML(paste0(
@@ -150,6 +150,7 @@ server <- function(input, output) {
         zip::unzip(input$filemap$datapath, exdir = shppth)  # unzip to temp location
         shpname <- list.files(path = shppth, pattern = '\\.shp')[1]  # get name of shapefile in temp location
         #print(shpname)
+        req(shpname)  # if the zip has not shapefile, do not try to load it
         VECTOR_FILE <<- st_read(paste0(shppth, shpname)) %>%
           dplyr::mutate(PPGIS_CODE = as.character(row_number()), SELECTED = NA) %>% 
           dplyr::select(PPGIS_CODE, SELECTED, geometry) %>% ## everything()
