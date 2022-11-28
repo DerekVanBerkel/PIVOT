@@ -144,6 +144,17 @@ server <- function(input, output) {
           dplyr::select(PPGIS_CODE, SELECTED, geometry) %>% ## everything()
           sf::st_transform(4326)
       }
+      else if (str_detect(input$filemap$datapath, '.zip')){  # zipped shapefile
+        #print(input$filemap$datapath)
+        shppth <- sub('.\\....', '', input$filemap$datapath)  # get temporary file location and remove zip file name
+        zip::unzip(input$filemap$datapath, exdir = shppth)  # unzip to temp location
+        shpname <- list.files(path = shppth, pattern = '\\.shp')[1]  # get name of shapefile in temp location
+        #print(shpname)
+        VECTOR_FILE <<- st_read(paste0(shppth, shpname)) %>%
+          dplyr::mutate(PPGIS_CODE = as.character(row_number()), SELECTED = NA) %>% 
+          dplyr::select(PPGIS_CODE, SELECTED, geometry) %>% ## everything()
+          sf::st_transform(4326)
+      }
       else{ # if not a shapefile, proceed as normal
         VECTOR_FILE <<- st_read(input$filemap$datapath) %>%
           dplyr::mutate(PPGIS_CODE = as.character(row_number()), SELECTED = NA) %>% 
