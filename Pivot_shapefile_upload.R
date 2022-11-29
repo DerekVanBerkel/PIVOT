@@ -139,8 +139,21 @@ server <- function(input, output) {
         shppth_idx <- which(str_detect(input$filemap$datapath, '\\.shp'))
         shppth <- sub('.\\.', 'shapefile.', input$filemap$datapath[shppth_idx])
         
-        VECTOR_FILE <<- st_read(shppth) %>%
-          dplyr::mutate(PPGIS_CODE = as.character(row_number()), SELECTED = NA) %>% 
+        tryCatch({
+          VECTOR_FILE <<- st_read(shppth) %>%
+            dplyr::mutate(PPGIS_CODE = as.character(row_number()), SELECTED = NA) %>% 
+            dplyr::select(PPGIS_CODE, SELECTED, geometry) %>% ## everything()
+            sf::st_transform(4326)
+        }, warning = function(w) {
+          showNotification('There was an error - please make sure you included all shapefile components. Loading default file instead.', '', duration = NULL, type = 'error')
+          return()
+        }, error = function(e) {
+          showNotification('There was an error - please make sure you included all shapefile components. Loading default file instead.', '', duration = NULL, type='error')
+          return()
+        })
+        
+        VECTOR_FILE <<- st_read(system.file("shape/nc.shp", package="sf")) %>%  # use the default file instead
+          dplyr::mutate(PPGIS_CODE = as.character(row_number()),SELECTED = NA) %>% 
           dplyr::select(PPGIS_CODE, SELECTED, geometry) %>% ## everything()
           sf::st_transform(4326)
       }
@@ -153,6 +166,14 @@ server <- function(input, output) {
         req(shpname)  # if the zip has not shapefile, do not try to load it
         VECTOR_FILE <<- st_read(paste0(shppth, shpname)) %>%
           dplyr::mutate(PPGIS_CODE = as.character(row_number()), SELECTED = NA) %>% 
+          dplyr::select(PPGIS_CODE, SELECTED, geometry) %>% ## everything()
+          sf::st_transform(4326)
+      }
+      else if (str_detect(input$filemap$datapath, '.shp')){  # only added .shp, no other parts
+        showNotification('There was an error - please make sure you included all shapefile components. Loading default file instead.', '', duration = NULL, type='error')
+      
+        VECTOR_FILE <<- st_read(system.file("shape/nc.shp", package="sf")) %>%  # use the default file instead
+          dplyr::mutate(PPGIS_CODE = as.character(row_number()),SELECTED = NA) %>% 
           dplyr::select(PPGIS_CODE, SELECTED, geometry) %>% ## everything()
           sf::st_transform(4326)
       }
