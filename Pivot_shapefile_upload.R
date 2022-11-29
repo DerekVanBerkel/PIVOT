@@ -1,5 +1,3 @@
-
-
 library(shiny)
 library(leaflet)
 library(sf)
@@ -18,7 +16,7 @@ library(readr)
 library(formattable)
 
 options(shiny.maxRequestSize=1000000000) 
-
+values <- c("None" = NA)
 
 #ppgis <- function{data = ,  }
 
@@ -62,9 +60,17 @@ ui <- dashboardPage(
   dashboardSidebar(
     width = 250,
     sidebarMenu(
-      radioButtons("Land_Use_Cat", label = h3("Radio buttons"),
-                   choices = list("Residential" = 1,  "Commercial" = 2,    "Industrial" = 3,    "Institutional" = 4, "Recreational" = 5 ), 
-                   selected = 1),
+      # radioButtons("Land_Use_Cat", label = h3("Radio buttons"),
+      #              choices = list("Residential" = 1,  "Commercial" = 2,    "Industrial" = 3,    "Institutional" = 4, "Recreational" = 5 ), 
+      #              selected = 1),
+      
+      radioButtons("radioInt", label = "New Label",choices=values),
+      
+      hr(),
+      fluidRow(column(3, verbatimTextOutput("value"))),
+      textInput("textinp","Create New Label", placeholder = NULL),
+      actionButton("labbutton","Create"),
+      
       downloadLink("download_shp", "Download Map"),
       
       hr(),
@@ -73,7 +79,7 @@ ui <- dashboardPage(
                 "Choose shapefile file type",
                 multiple = TRUE,
                 accept = c(".shp",".dbf",".sbn",".sbx",".shx",".prj", ".gpkg", ".geojson", ".zip")), 
-
+      
       actionButton("clear_map", "Reload Map"),
       HTML(paste0(
         "<br>",
@@ -110,7 +116,22 @@ ui <- dashboardPage(
 )
 
 
-server <- function(input, output) {
+server <- function(input, output, session) {
+  
+  ###observe user categories input
+  value <- c("None" = NA)
+  rv <- reactiveValues(values=value)
+  print(rv)
+  
+  observeEvent(input$labbutton,{
+    req(input$textinp)
+    newVal <- length(rv$values)  
+    names(newVal) <- input$textinp
+    rv$values <- c(rv$values, newVal)
+    updateRadioButtons(session,inputId ="radioInt",choices=rv$values)
+    print(rv$values)
+  })
+  
   
   observeEvent(input$clear_map, {  # reload all map contents with whatever file was uploaded
     
@@ -171,7 +192,7 @@ server <- function(input, output) {
       }
       else if (str_detect(input$filemap$datapath, '.shp')){  # only added .shp, no other parts
         showNotification('There was an error - please make sure you included all shapefile components. Loading default file instead.', '', duration = NULL, type='error')
-      
+        
         VECTOR_FILE <<- st_read(system.file("shape/nc.shp", package="sf")) %>%  # use the default file instead
           dplyr::mutate(PPGIS_CODE = as.character(row_number()),SELECTED = NA) %>% 
           dplyr::select(PPGIS_CODE, SELECTED, geometry) %>% ## everything()
@@ -220,10 +241,10 @@ server <- function(input, output) {
           # pal=landuse_pallete,
           values=landuse_cat$Land_Use_Categories,
           position='bottomleft',
-          title="Legend of Landuse Categories",
+          title="Legend of Categories",
           opacity=0.6,
-          colors = color_palette_list,
-          labels = Land_Use_Categories
+          colors = color_palette_list[0:length(values)],
+          labels = names(values)
         )
     })
     
@@ -233,7 +254,26 @@ server <- function(input, output) {
     screenshot(id="PPGISmap")
   })
   
-  
+  observe({
+    proxy <- leafletProxy("PPGISmap", data = VECTOR_FILE)
+    
+    # Remove any existing legend, and only if the legend is
+    # enabled, create a new one.
+    proxy %>% clearControls()
+    if (input$labbutton) {
+      newMapLgd <- rv$values
+      print(newMapLgd)
+      proxy %>% addLegend(
+        # pal=landuse_pallete,
+        values=newMapLgd,
+        position='bottomleft',
+        title="Legend of Landuse Categories",
+        opacity=0.6,
+        colors = color_palette_list[0:length(newMapLgd)],
+        labels = names(newMapLgd)
+      )
+    }
+  })
   
   # just testing here
   observeEvent(input$PPGISmap_shape_click, {
@@ -267,14 +307,13 @@ server <- function(input, output) {
           data=VECTOR_FILE_selected,
           layerId=~PPGIS_CODE,
           weight=1,
-          fillOpacity=0#,
-          #fillColor = #FFFFFF00
+          fillOpacity=0
         ) 
       
       #print(VECTOR_FILE_selected)
     }
     else { # if polygon is not selected
-      landuse_palette_code_selected <- as.numeric(input$Land_Use_Cat)
+      landuse_palette_code_selected <- as.numeric(input$radioInt)
       #print(landuse_palette_code_selected)
       
       # Get current table selected
@@ -347,11 +386,6 @@ server <- function(input, output) {
   
   
 }
-
-shinyApp(ui, server)
-
-
-
 
 shinyApp(ui, server)
 
