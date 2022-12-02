@@ -281,7 +281,7 @@ server <- function(input, output, session) {
         bmap_fields <<- NULL
       })
       # Update the field selector with the basemap's fields
-      updateSelectInput(inputId = 'field', choices = bmap_fields)
+      updateSelectInput(inputId = 'field', choices = bmap_fields[!bmap_fields == 'geometry']) # trying to load geometry column causes crash
     }
                              
     output$PPGISmap <- renderLeaflet({
