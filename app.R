@@ -150,6 +150,16 @@ theme_blue_gradient <- shinyDashboardThemeDIY(
   
 )
 
+js <- '
+$(document).ready(function(){
+  $("[id^=sw-content-]").on("shown", function(){
+    $(".sidebar").css({"overflow-y": "visible"});
+  }).on("hidden", function(){
+    $(".sidebar").css({"overflow-y": "auto"});
+  });
+});
+'
+
 #ppgis <- function{data = ,  }
 
 # #load shapefile
@@ -192,7 +202,10 @@ ui <- dashboardPage(
   dashboardHeader(title = "PIVOT ", titleWidth = 250),
   dashboardSidebar(
     width = 300,
+    
     sidebarMenu(
+      class = "sidebar",
+      style = "height: 90vh; overflow-y: auto;",
       hr(),
       # "Add a map as your PPGIS base, and press the Reload Map button when uploaded. If you simple want to test the application", tags$br(),
       # "press the Reload Map button for test data"
@@ -221,9 +234,7 @@ ui <- dashboardPage(
       
       selectInput("field", tags$p(style = "font-size: 16px;","Choose a measure from the optional map to display:"), c("None", bmap_fields))),
       
-      #actionButton("clear_map", "Reload Map"),
-      
-      actionBttn(
+      fluidRow(column(11, actionBttn(
         inputId = "clear_map",
         label = "Reload Map",
         color = "success",
@@ -231,7 +242,7 @@ ui <- dashboardPage(
         style = "unite",
         icon = icon("map"),
         block = TRUE
-      ),
+      ))),
       
       
       hr(),
@@ -245,7 +256,7 @@ ui <- dashboardPage(
                 
                 
                 
-      actionBttn(
+      fluidRow(column(11,actionBttn(
         inputId = "labbutton",
         label = "Add Map Category",
         color = "success",
@@ -253,7 +264,7 @@ ui <- dashboardPage(
         style = "unite",
         icon = icon("pencil"),
         block = TRUE
-      ),
+      ))),
 
       
       #"Choose the groups that you want to add to the map, and click the map to indicate these preferences"
@@ -306,11 +317,11 @@ ui <- dashboardPage(
   ),
   dashboardBody(theme_blue_gradient,
                 leafletOutput('PPGISmap', width='100%', height='850'), 
-                div(style= "left:1260px; right:40px; bottom:90px; position:fixed; cursor:inherit; z-index: 10000;", 
+                div(style= "left:1500px; right:40px; bottom:60px; position:fixed; cursor:inherit; z-index: 10000;", 
                     wellPanel(
                       style = "padding: 8px; border-bottom: 1px solid #CCC; background: #EBEDF0;",
                       HTML("Download a print of your map?"), actionButton("go", "Take a screenshot"))),
-                div(style= "left:1260px; right:40px; bottom:0px; position:fixed; cursor:inherit; z-index: 10000;", 
+                div(style= "left:1500px; right:40px; bottom:0px; position:fixed; cursor:inherit; z-index: 10000;", 
                     wellPanel(
                       style = "padding: 8px; border-bottom: 1px solid #CCC; background: #EBEDF0;",
                       HTML("Download your map data?"), downloadButton("download_shp", "Download Map")))
@@ -699,6 +710,7 @@ server <- function(input, output, session) {
 }
 
 shinyApp(ui, server)
+
 
 
 
