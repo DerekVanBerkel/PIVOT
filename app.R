@@ -24,6 +24,10 @@ library(shinyjs)
 options(shiny.maxRequestSize=1000000000) 
 values <- c("None" = NA)
 bmap_fields <- NULL
+user_basemap <- NULL
+basemap_type <- 'None'
+basemap_groups <<-c("OSM (default)", "Toner", "Toner Lite", "Open Topo Map", "ESRI World Imagery")
+
 
 theme_blue_gradient <- shinyDashboardThemeDIY(
   
@@ -201,19 +205,19 @@ catch_vec <- function(file_path){
 # files. It relies on catch_vec to handle errors if the resulting files are 
 # problematic.
 load_spatial <- function(file_in){
-    if(str_detect(file_in$datapath, '.shp')){  # if shapefile
-      # the upload gives the files unique names, so read_sf won't recognize 
-      # them as belonging to the same shapefile
+    if(any(str_detect(file_in$datapath, '.shp'))){  # if shapefile
+      # the upload gives the files unique names, so st_read() won't recognize 
+      # them as belonging to the same shapefile. Thus we rename them.
       for (path in file_in$datapath){
         newpath <- sub('.\\.', 'shapefile.', path)
         file.copy(path, newpath)  # create new set of properly named files
       }
-      # locate which file is the .shp file to feed
+      # locate which file is the .shp file to feed into st_read()
       shppth_idx <- which(str_detect(file_in$datapath, '\\.shp'))
       shppth <- sub('.\\.', 'shapefile.', file_in$datapath[shppth_idx])
       spatial_data <- catch_vec(shppth)
     }
-    else if (str_detect(file_in$datapath, '.zip')){  # zipped shapefile
+    else if (any(str_detect(file_in$datapath, '.zip'))){  # zipped shapefile
       shppth <- sub('.\\....', '', file_in$datapath)  # get temporary file location
       zip::unzip(file_in$datapath, exdir = shppth)  # unzip to temp location
       shpname <- list.files(path = shppth, pattern = '\\.shp')[1]  # get name of shapefile in temp location
@@ -293,6 +297,15 @@ ui <- dashboardPage(
         block = TRUE
       ))),
       
+      fluidRow(column(11, actionBttn(
+        inputId = "reload_basemap",
+        label = "Reload Basemap",
+        color = "success",
+        size = "md",
+        style = "unite",
+        icon = icon("map"),
+        block = TRUE
+      ))),
       
       hr(),
       fluidRow(column(3, verbatimTextOutput("value"))),
@@ -394,6 +407,38 @@ server <- function(input, output, session) {
     print(rv$values)
   })
   
+  output$PPGISmap <- renderLeaflet({
+    createMap() %>%
+      addMapPane('base_layers', 410) %>%  # This ensures the base layers will render below the clickable polygon layer
+      addMapPane('poly_layer', 450) %>%
+      addTiles(group = "OSM (default)") %>%
+      addProviderTiles(providers$Stamen.Toner, group = "Toner") %>%
+      addProviderTiles(providers$Stamen.TonerLite, group = "Toner Lite") %>%
+      addProviderTiles(providers$OpenTopoMap, group = "Open Topo Map") %>%
+      addProviderTiles(providers$Esri.WorldImagery, group = "ESRI World Imagery") %>%
+      addPolygons(
+        data=VECTOR_FILE,
+        layerId=~PPGIS_CODE,
+        #group='base_polygons',
+        weight=1.5,
+        fillOpacity=0,
+        color = 'black',
+        options = pathOptions(pane = "poly_layer")
+      )  %>%
+      addLayersControl(
+        baseGroups = basemap_groups,
+        options = layersControlOptions(collapsed = FALSE)) %>%
+      addLegend(
+        # pal=landuse_pallete,
+        values=landuse_cat$Land_Use_Categories,
+        position='bottomleft',
+        title="Legend of Categories",
+        opacity=0.6,
+        colors = color_palette_list[1:length(values)],
+        labels = names(values)
+      )
+  })
+  
   # The clear_map event executes the following actions:
   # First, it checks if a polygon file has been uploaded and then processes that 
   # file into the form necessary for use in PIVOT, or defaults to the NC vector 
@@ -426,11 +471,39 @@ server <- function(input, output, session) {
         st_bbox() %>% 
         as.character()
     }
+    leafletProxy(mapId = 'PPGISmap') %>%
+      removeShape(VECTOR_FILE) %>%
+      addPolygons(
+        data=VECTOR_FILE,
+        layerId=~PPGIS_CODE,
+        #group='base_polygons',
+        weight=1.5,
+        fillOpacity=0,
+        color = 'black',
+        options = pathOptions(pane = "poly_layer")) 
     
+    
+  })
+  observeEvent(input$go, {
+    screenshot(id="PPGISmap")
+  })
+  
+  observeEvent(input$reload_basemap, {
+    if(basemap_type == 'raster'){
+      leafletProxy(mapId='PPGISmap') %>%
+        clearImages()
+    }
+    else if(basemap_type == 'vector'){
+      leafletProxy(mapId='PPGISmap') %>%
+        removeShape(user_basemap) 
+    }
+
     # Here, we figure out if we have uploaded a basemap, if it is raster or vector, and load it
     if(is.null(input$basemap_file)){  # if no file
       user_basemap <<- NULL
+      basemap_type <<- 'None'
       basemap_groups <<-c("OSM (default)", "Toner", "Toner Lite", "Open Topo Map", "ESRI World Imagery")
+      return()
     }
     else if (tools::file_ext(input$basemap_file$name[1]) == 'tif'){  # if it is a .tif raster
       basemap_type <<- 'raster'
@@ -438,6 +511,7 @@ server <- function(input, output, session) {
       basemap_name <<- toString(input$basemap_file$name[1])
       basemap_groups <<- c("OSM (default)", "Toner", "Toner Lite", "Open Topo Map", "ESRI World Imagery", basemap_name)
       bmap_fields <<- NULL
+      updateSelectInput(inputId = 'field', choices = 'N/A')
     }
     else {  # if a vector
       user_basemap <<- load_spatial(input$basemap_file)
@@ -447,59 +521,22 @@ server <- function(input, output, session) {
       bmap_fields <<- colnames(user_basemap %>% dplyr::select(where(is.numeric)))
       # Update the field selector with the basemap's fields
       updateSelectInput(inputId = 'field', choices = bmap_fields[!bmap_fields == 'geometry']) # trying to load geometry column causes crash
-    }
-    
-    output$PPGISmap <- renderLeaflet({
-      createMap() %>%
-        addMapPane('base_layers', 410) %>%  # This ensures the base layers will render below the clickable polygon layer
-        addMapPane('poly_layer', 450) %>%
-        addTiles(group = "OSM (default)") %>%
-        addProviderTiles(providers$Stamen.Toner, group = "Toner") %>%
-        addProviderTiles(providers$Stamen.TonerLite, group = "Toner Lite") %>%
-        addProviderTiles(providers$OpenTopoMap, group = "Open Topo Map") %>%
-        addProviderTiles(providers$Esri.WorldImagery, group = "ESRI World Imagery") %>%
-        #  If there is a basemap, either display the raster or vector file.
-        {if(is.null(user_basemap)) . 
-          else if (basemap_type == 'raster') addRasterImage(map = ., x = user_basemap, group = basemap_name) 
-          else addPolygons(map = ., 
-                           data = user_basemap, 
-                           group = basemap_name, 
-                           weight = 0.5,
-                           fillOpacity = 0,
-                           color = 'blue',
-                           options = pathOptions(pane = "base_layers"))} %>%
-        addPolygons(
-          data=VECTOR_FILE,
-          layerId=~PPGIS_CODE,
-          #group='base_polygons',
-          weight=1.5,
-          fillOpacity=0,
-          color = 'black',
-          options = pathOptions(pane = "poly_layer")
-        ) %>%
-        # Overlay groups
-        # addCircles(~long, ~lat, ~10^mag/5, stroke = F, group = "Quakes") %>%
-        # addPolygons(data = outline, lng = ~long, lat = ~lat,
-        #             fill = F, weight = 2, color = "#FFFFCC", group = "Outline") %>%
-        # Layers control
-        addLayersControl(
-          baseGroups = basemap_groups,
-          # overlayGroups = c("Quakes", "Outline"),
-          options = layersControlOptions(collapsed = FALSE)) %>%
-        addLegend(
-          # pal=landuse_pallete,
-          values=landuse_cat$Land_Use_Categories,
-          position='bottomleft',
-          title="Legend of Categories",
-          opacity=0.6,
-          colors = color_palette_list[1:length(values)],
-          labels = names(values)
-        )
-    })
-    
-  })
-  observeEvent(input$go, {
-    screenshot(id="PPGISmap")
+      }
+    leafletProxy(mapId='PPGISmap') %>%
+      #  If there is a basemap, either display the raster or vector file.
+      {if(is.null(user_basemap)) . 
+        else if (basemap_type == 'raster') addRasterImage(map = ., x = user_basemap, group = basemap_name) 
+        else addPolygons(map = ., 
+                         data = user_basemap, 
+                         group = basemap_name, 
+                         weight = 0.5,
+                         fillOpacity = 0,
+                         color = 'blue',
+                         options = pathOptions(pane = "base_layers"))} %>%
+      addLayersControl(
+        baseGroups = basemap_groups,
+        # overlayGroups = c("Quakes", "Outline"),
+        options = layersControlOptions(collapsed = FALSE))
   })
   
   #  When users select a basemap field to display:
@@ -512,7 +549,7 @@ server <- function(input, output, session) {
     }
     else {
       basemap_var <- input$field
-      bins <- quantile(user_basemap[[basemap_var]])
+      bins <- quantile(user_basemap[[basemap_var]], na.rm=TRUE)
       bmap_pal <- colorBin("Greys", domain = user_basemap[[basemap_var]], bins = bins)  # may want to change color ramp
       
       leafletProxy(mapId='PPGISmap') %>%
@@ -523,8 +560,7 @@ server <- function(input, output, session) {
                     fillOpacity = 0.25,
                     color = 'white',
                     fillColor = ~bmap_pal(user_basemap[[basemap_var]]),
-                    options = pathOptions(pane = "base_layers")
-        ) 
+                    options = pathOptions(pane = "base_layers")) 
       
     }
   }, ignoreInit = TRUE)
