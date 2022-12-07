@@ -168,6 +168,8 @@ VECTOR_FILE <- st_read(system.file("shape/nc.shp", package="sf")) %>%
   dplyr::select(PPGIS_CODE, SELECTED, geometry) %>% ## everything()
   sf::st_transform(4326)
 
+Default_file <- VECTOR_FILE
+
 #  polygon basemap code
 Basemap_test <- st_read(system.file("shape/nc.shp", package="sf")) %>%
   sf::st_transform(4326)
@@ -184,7 +186,46 @@ createMap <- function() {
   return(m)
 }
 
+catch_vec <- function(file_path){  # This function is designed to allow attempts at loading vector files without crashing the app. If an improper shapefile is loaded, it will raise an error warning and return the default NC shapefile instead
+  tryCatch({
+    spatial_data <- st_read(file_path) %>%
+      sf::st_transform(4326)
+  }, warning = function(w) {
+    showNotification('There was an error - please make sure you included all shapefile components. Loading default file instead.', '', duration = NULL, type = 'error')
+    spatial_data <- Default_file
+  }, error = function(e) {
+    showNotification('There was an error - please make sure you included all shapefile components. Loading default file instead.', '', duration = NULL, type='error')
+    spatial_data <- Default_file
+  })
+  return(spatial_data)
+}
 
+# This function takes input from a fileInput and outputs spatial data
+load_spatial <- function(file_in, allow_raster = TRUE){
+    if(str_detect(file_in$datapath, '.shp')){  # if shapefile
+      # the upload gives the files unique names, so read_sf won't recognize 
+      # them as belonging to the same shapefile
+      for (path in file_in$datapath){
+        newpath <- sub('.\\.', 'shapefile.', path)
+        file.copy(path, newpath)  # create new set of properly named files
+      }
+      # locate which file is the .shp file to feed
+      shppth_idx <- which(str_detect(file_in$datapath, '\\.shp'))
+      shppth <- sub('.\\.', 'shapefile.', file_in$datapath[shppth_idx])
+      spatial_data <- catch_vec(shppth)
+    }
+    else if (str_detect(file_in$datapath, '.zip')){  # zipped shapefile
+      shppth <- sub('.\\....', '', file_in$datapath)  # get temporary file location
+      zip::unzip(file_in$datapath, exdir = shppth)  # unzip to temp location
+      shpname <- list.files(path = shppth, pattern = '\\.shp')[1]  # get name of shapefile in temp location
+      req(shpname)  # if the zip has no shapefile, do not try to load it
+      spatial_data <- catch_vec(paste0(shppth, shpname))
+    }
+    else{ # if not a shapefile, proceed as normal
+      spatial_data <<- catch_vec(file_in$datapath)
+    }
+  return(spatial_data)
+}
 
 #Land Use categories and corresponding colors
 Land_Use_Categories<- c('Residential', 'Commercial', 'Industrial', 'Institutional', 'Recreational')
@@ -366,10 +407,7 @@ server <- function(input, output, session) {
   observeEvent(input$clear_map, {  # reload all map contents with whatever file was uploaded
     
     if (is.null(input$filemap)) {  # if no upload, use default NC
-      VECTOR_FILE <<- st_read(system.file("shape/nc.shp", package="sf")) %>% 
-        dplyr::mutate(PPGIS_CODE = as.character(row_number()),SELECTED = NA) %>% 
-        dplyr::select(PPGIS_CODE, SELECTED, geometry) %>% ## everything()
-        sf::st_transform(4326)
+      VECTOR_FILE <<- Default_file
       is_selected <<- NA
       print(summary(VECTOR_FILE))
       print(colnames(VECTOR_FILE))
@@ -379,70 +417,12 @@ server <- function(input, output, session) {
         as.character()
     } 
     else {
-      if(length(input$filemap$datapath ) > 1){  # if shapefile
-        # the upload gives the files unique names, so read_sf won't recognize 
-        # them as belonging to the same shapefile
-        for (path in input$filemap$datapath){
-          newpath <- sub('.\\.', 'shapefile.', path)
-          file.copy(path, newpath)  # create new set of properly named files
-        }
-        
-        # locate which file is the .shp file to feed
-        shppth_idx <- which(str_detect(input$filemap$datapath, '\\.shp'))
-        shppth <- sub('.\\.', 'shapefile.', input$filemap$datapath[shppth_idx])
-        
-        tryCatch({
-          VECTOR_FILE <<- st_read(shppth) %>%
-            dplyr::mutate(PPGIS_CODE = as.character(row_number()), SELECTED = NA) %>% 
-            dplyr::select(PPGIS_CODE, SELECTED, geometry) %>% ## everything()
-            sf::st_transform(4326)
-        }, warning = function(w) {
-          showNotification('There was an error - please make sure you included all shapefile components. Loading default file instead.', '', duration = NULL, type = 'error')
-          VECTOR_FILE <<- st_read(system.file("shape/nc.shp", package="sf")) %>%  # use the default file instead
-            dplyr::mutate(PPGIS_CODE = as.character(row_number()),SELECTED = NA) %>% 
-            dplyr::select(PPGIS_CODE, SELECTED, geometry) %>% ## everything()
-            sf::st_transform(4326)
-        }, error = function(e) {
-          showNotification('There was an error - please make sure you included all shapefile components. Loading default file instead.', '', duration = NULL, type='error')
-          VECTOR_FILE <<- st_read(system.file("shape/nc.shp", package="sf")) %>%  # use the default file instead
-            dplyr::mutate(PPGIS_CODE = as.character(row_number()),SELECTED = NA) %>% 
-            dplyr::select(PPGIS_CODE, SELECTED, geometry) %>% ## everything()
-            sf::st_transform(4326)
-        })
-      }
-      else if (str_detect(input$filemap$datapath, '.zip')){  # zipped shapefile
-        #print(input$filemap$datapath)
-        shppth <- sub('.\\....', '', input$filemap$datapath)  # get temporary file location and remove zip file name
-        zip::unzip(input$filemap$datapath, exdir = shppth)  # unzip to temp location
-        shpname <- list.files(path = shppth, pattern = '\\.shp')[1]  # get name of shapefile in temp location
-        #print(shpname)
-        req(shpname)  # if the zip has not shapefile, do not try to load it
-        VECTOR_FILE <<- st_read(paste0(shppth, shpname)) %>%
-          dplyr::mutate(PPGIS_CODE = as.character(row_number()), SELECTED = NA) %>% 
-          dplyr::select(PPGIS_CODE, SELECTED, geometry) %>% ## everything()
-          sf::st_transform(4326)
-      }
-      else if (str_detect(input$filemap$datapath, '.shp')){  # only added .shp, no other parts
-        showNotification('There was an error - please make sure you included all shapefile components. Loading default file instead.', '', duration = NULL, type='error')
-        
-        VECTOR_FILE <<- st_read(system.file("shape/nc.shp", package="sf")) %>%  # use the default file instead
-          dplyr::mutate(PPGIS_CODE = as.character(row_number()),SELECTED = NA) %>% 
-          dplyr::select(PPGIS_CODE, SELECTED, geometry) %>% ## everything()
-          sf::st_transform(4326)
-      }
-      else{ # if not a shapefile, proceed as normal
-        VECTOR_FILE <<- st_read(input$filemap$datapath) %>%
-          dplyr::mutate(PPGIS_CODE = as.character(row_number()), SELECTED = NA) %>% 
-          dplyr::select(PPGIS_CODE, SELECTED, geometry) %>% ## everything()
-          sf::st_transform(4326)
-      }
+      VECTOR_FILE <<- load_spatial(input$filemap) %>%
+        dplyr::mutate(PPGIS_CODE = as.character(row_number()),SELECTED = NA) %>%
+        dplyr::select(PPGIS_CODE, SELECTED, geometry) ## everything()
       
       # clear selections from previous file
       is_selected <<- NA
-      #print(summary(VECTOR_FILE))
-      #print(colnames(VECTOR_FILE))
-      #print(VECTOR_FILE$PPGIS_CODE)
-      
       base_map_bounds <<- VECTOR_FILE %>% 
         st_bbox() %>% 
         as.character()
@@ -460,41 +440,12 @@ server <- function(input, output, session) {
       basemap_groups <<- c("OSM (default)", "Toner", "Toner Lite", "Open Topo Map", "ESRI World Imagery", basemap_name)
       bmap_fields <<- NULL
     }
-    else if (tools::file_ext(input$basemap_file$name[1]) %in% c('geojson', 'gpkg')){  # if it is a single-file vector
+    else {  # if a vector
+      user_basemap <<- load_spatial(input$basemap_file)
       basemap_type <<- 'vector'
-      user_basemap <<- st_read(input$basemap_file$datapath) %>%
-        sf::st_transform(4326)
       basemap_name <<- toString(input$basemap_file$name[1])
       basemap_groups <<- c("OSM (default)", "Toner", "Toner Lite", "Open Topo Map", "ESRI World Imagery", basemap_name)
       bmap_fields <<- colnames(user_basemap %>% dplyr::select(where(is.numeric)))
-    }
-    else {  # if a shapefile
-      for (path in input$filemap$datapath){
-        newpath <- sub('.\\.', 'shapefile.', path)
-        file.copy(path, newpath)  # create new set of properly named files
-      }
-      # locate which file is the .shp file to feed
-      shppth_idx <- which(str_detect(input$filemap$datapath, '\\.shp'))
-      shppth <- sub('.\\.', 'shapefile.', input$filemap$datapath[shppth_idx])
-      
-      tryCatch({
-        user_basemap <<- st_read(shppth) %>%
-          sf::st_transform(4326)
-        basemap_type <<- 'vector'
-        basemap_name <<- toString(input$basemap_file$name[1])
-        basemap_groups <<- c("OSM (default)", "Toner", "Toner Lite", "Open Topo Map", "ESRI World Imagery", basemap_name)
-        bmap_fields <<- colnames(user_basemap %>% dplyr::select(where(is.numeric)))
-      }, warning = function(w) {
-        showNotification('Invalid basemap upload - please make sure you included all shapefile components.', '', duration = NULL, type = 'error')
-        user_basemap <<- NULL
-        basemap_groups <<-c("OSM (default)", "Toner", "Toner Lite", "Open Topo Map", "ESRI World Imagery")
-        bmap_fields <<- NULL
-      }, error = function(e) {
-        showNotification('Invalis basemap upload - please make sure you included all shapefile components.', '', duration = NULL, type='error')
-        user_basemap <<- NULL
-        basemap_groups <<-c("OSM (default)", "Toner", "Toner Lite", "Open Topo Map", "ESRI World Imagery")
-        bmap_fields <<- NULL
-      })
       # Update the field selector with the basemap's fields
       updateSelectInput(inputId = 'field', choices = bmap_fields[!bmap_fields == 'geometry']) # trying to load geometry column causes crash
     }
