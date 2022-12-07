@@ -18,6 +18,7 @@ library(raster)
 library(dashboardthemes)
 library(fontawesome)
 library(shinyBS)
+library(shinyjs)
 
 
 options(shiny.maxRequestSize=1000000000) 
@@ -178,9 +179,9 @@ createMap <- function() {
 #Land Use categories and corresponding colors
 Land_Use_Categories<- c('Residential', 'Commercial', 'Industrial', 'Institutional', 'Recreational')
 landuse_cat <- data.frame(Land_Use_Categories)
-color_palette_list = c("#ffffff","#ffff99", "#e31a1c", "#6a3d9a", "#a6cee3", "#b2df8a")
+color_palette_list = c("#ffffff","#a6cee3", "#1f78b4","#b2df8a","#33a02c","#fb9a99","#e31a1c","#fdbf6f","#ff7f00","#cab2d6","#6a3d9a","#ffff99", "#b15928")
 landuse_pallete <- colorBin(palette = color_palette_list, domain=1:length(Land_Use_Categories), na.color = "#FFFFFF00")
-map_pallette <- colorBin(palette =  c("#ffff99", "#e31a1c", "#6a3d9a", "#a6cee3", "#b2df8a"), domain=1:length(Land_Use_Categories), na.color = "#FFFFFF00")
+map_pallette <- colorBin(palette =  c("#a6cee3", "#1f78b4","#b2df8a","#33a02c","#fb9a99","#e31a1c","#fdbf6f","#ff7f00","#cab2d6","#6a3d9a","#ffff99", "#b15928"), domain=1:length(Land_Use_Categories), na.color = "#FFFFFF00")
 landuse_pallete2 <- colorBin(palette = color_palette_list, domain=1:length(Land_Use_Categories), na.color = "black") # for borders
 ###use updateradiobutton, and text input https://shiny.rstudio.com/reference/shiny/0.14/updateRadioButtons.html
 
@@ -196,20 +197,27 @@ ui <- dashboardPage(
       # "Add a map as your PPGIS base, and press the Reload Map button when uploaded. If you simple want to test the application", tags$br(),
       # "press the Reload Map button for test data"
       fileInput("filemap",
-                tags$p(style = "font-size: 16px;",span("1. Add base map layer for planning and press Reload Map", div(style = "display:inline-block;",
-                    title = "Choose spatial vector data (i.e., .shp, .gpkg, .geojson) for the base layer that you will use for planning. *Note shapefile must be accomponied by necessary additional files (.) You can also press Reload Map to test the application using data from North Carolina",
-                    icon("info-circle")))),
+                tags$p(style = "font-size: 16px;",
+                  span("1. Add base map layer for planning and press Reload Map"),
+                  span(icon("info-circle"), id = "icon1", style = "color: blue")
+                ), 
                 multiple = TRUE,
                 buttonLabel = "Browse to upload spatial data",
                 accept = c(".shp",".dbf",".sbn",".sbx",".shx",".prj", ".gpkg", ".geojson", ".zip")),
-      
+                bsPopover("icon1", "Choose spatial data", "This include .shp, .gpkg, and .geojson for the base layer that you will use for planning. *Note shapefile must be accomponied by necessary additional files (.) You can also press Reload Map to test the application using data from North Carolina", trigger = "hover", placement = "bottom"),
+                
+                
+                
       wellPanel(fileInput("basemap_file",
-                tags$p(style = "font-size: 16px;",
-                span("2. Optional step. Add a map for veiwing and press Reload Map", div(style = "display:inline-block;",
-                                                                                    title = "Add a map to help explore your region and aid in decision-making. Press the Reload Map button when uploaded",
-                                                                                    icon("info-circle")))),
-                multiple = TRUE,
-                accept = c(".tif")),
+                          tags$p(style = "font-size: 16px;",
+                            span("2. Optional step. Add a map for veiwing and press Reload Map"),
+                            span(icon("info-circle"), id = "icon2", style = "color: blue")
+                          ), 
+                          multiple = TRUE,
+                          buttonLabel = "Browse to upload spatial data",
+                          accept = c(".shp",".dbf",".sbn",".sbx",".shx",".prj", ".gpkg", ".geojson", ".zip")),
+                bsPopover("icon2", "Add an additional map", "Explore your region and aid in decision-making. Press the Reload Map button when uploaded", trigger = "hover", placement = "bottom"),
+
       
       selectInput("field", tags$p(style = "font-size: 16px;","Choose a measure from the optional map to display:"), c("None", bmap_fields))),
       
@@ -228,12 +236,15 @@ ui <- dashboardPage(
       
       hr(),
       fluidRow(column(3, verbatimTextOutput("value"))),
-      textInput("textinp",tags$div( style = "font-size: 16px;",
-                                    span("3. Create categories for mapping and press Add Map Category", div(style = "display:inline-block;",
-                                                                                                                          title = "Type the name of the group options you wish to add to the map and press the Add Group button",
-                                                                                                                          icon("info-circle"))),), placeholder = "Type here"),
-      #actionButton("labbutton","Add Group"),
-      
+      textInput("textinp",
+                tags$p(style = "font-size: 16px;",
+                                span("3. Optional step. Add a map for veiwing and press Reload Map"),
+                                span(icon("info-circle"), id = "icon3", style = "color: blue"))
+                , placeholder = "Type here"),
+      bsPopover("icon3", "Create categories for mapping", "For example, the category green space for prioritizing the location of these projects in your city. Press Add Map Category when you have finished typing", trigger = "hover", placement = "bottom"),
+                
+                
+                
       actionBttn(
         inputId = "labbutton",
         label = "Add Map Category",
@@ -243,14 +254,20 @@ ui <- dashboardPage(
         icon = icon("pencil"),
         block = TRUE
       ),
+
+      
       #"Choose the groups that you want to add to the map, and click the map to indicate these preferences"
     
-      awesomeRadio("radioInt", label = tags$div(style = "font-size: 16px;",
-                                                span("4. Choose categories and click on the map to prioritize", 
-                                                     div(style = "display:inline-block;",
-                                                         title = "Choose the groups that you want to add to the map, and click the map to indicate these preferences",
-                                                         icon("info-circle")))),status= "success", choices=values),
-      hr(),
+      awesomeRadio("radioInt",  
+                    label = tags$p(style = "font-size: 16px;",
+                            span("4. Choose categories and click on the map to prioritize"),
+                            span(icon("info-circle"), id = "icon4", style = "color: blue")),
+                            status= "success", 
+                            choices=values),
+      bsPopover("icon4", "Choose a mapping category", "Click the circle to left to choose mapping categories you want to add to the map. click the map to indicate these preferences", trigger = "hover", placement = "bottom"),
+      
+                     
+                     hr(),
       
       
       
@@ -682,4 +699,6 @@ server <- function(input, output, session) {
 }
 
 shinyApp(ui, server)
+
+
 
