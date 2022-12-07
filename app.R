@@ -170,13 +170,6 @@ VECTOR_FILE <- st_read(system.file("shape/nc.shp", package="sf")) %>%
 
 Default_file <- VECTOR_FILE
 
-#  polygon basemap code
-Basemap_test <- st_read(system.file("shape/nc.shp", package="sf")) %>%
-  sf::st_transform(4326)
-# basemap_var <- 'BIR79'
-# bins <- quantile(Basemap_test[[basemap_var]])
-# bmap_pal <- colorBin("YlOrRd", domain = Basemap_test[[basemap_var]], bins = bins)
-
 # Creates base map
 createMap <- function() {  
   m <- leaflet() %>%
@@ -186,7 +179,10 @@ createMap <- function() {
   return(m)
 }
 
-catch_vec <- function(file_path){  # This function is designed to allow attempts at loading vector files without crashing the app. If an improper shapefile is loaded, it will raise an error warning and return the default NC shapefile instead
+# This function is designed to allow attempts at loading vector files without 
+# crashing the app. If an improper shapefile is loaded, it will raise an error 
+# warning and return the default NC shapefile instead
+catch_vec <- function(file_path){ 
   tryCatch({
     spatial_data <- st_read(file_path) %>%
       sf::st_transform(4326)
@@ -200,8 +196,11 @@ catch_vec <- function(file_path){  # This function is designed to allow attempts
   return(spatial_data)
 }
 
-# This function takes input from a fileInput and outputs spatial data
-load_spatial <- function(file_in, allow_raster = TRUE){
+# This function prepares uploaded data for being read by the catch_vec function.
+# It renames shapefiles in a way that is readable to st_read and it unzips .zip
+# files. It relies on catch_vec to handle errors if the resulting files are 
+# problematic.
+load_spatial <- function(file_in){
     if(str_detect(file_in$datapath, '.shp')){  # if shapefile
       # the upload gives the files unique names, so read_sf won't recognize 
       # them as belonging to the same shapefile
