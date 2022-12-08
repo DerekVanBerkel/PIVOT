@@ -173,6 +173,9 @@ VECTOR_FILE <- st_read(system.file("shape/nc.shp", package="sf")) %>%
   sf::st_transform(4326)
 
 Default_file <- VECTOR_FILE
+base_map_bounds <<- Default_file %>% 
+  st_bbox() %>% 
+  as.character()
 
 # Creates base map
 createMap <- function() {  
@@ -439,15 +442,8 @@ server <- function(input, output, session) {
       )
   })
   
-  # The clear_map event executes the following actions:
-  # First, it checks if a polygon file has been uploaded and then processes that 
-  # file into the form necessary for use in PIVOT, or defaults to the NC vector 
-  # Then, it clears any prior memory of selected polygons for an old vector file
-  # Then, it checks if there is an input to the user-supplied basemap fileInput.
-  # If there is, it sets up some variables needed to added it as a display
-  # option in the next step. 
-  # Next, the renderLeafet() function is called, incorporating the polygon file
-  # and optional basemap initialized in the previous sections.
+  # clear_map has been reworked and now just checks if a new vector map is 
+  # uploaded and then uses a proxy to add it to the leaflet map
   observeEvent(input$clear_map, {  # reload all map contents with whatever file was uploaded
     
     if (is.null(input$filemap)) {  # if no upload, use default NC
@@ -481,9 +477,8 @@ server <- function(input, output, session) {
         fillOpacity=0,
         color = 'black',
         options = pathOptions(pane = "poly_layer")) 
-    
-    
   })
+  
   observeEvent(input$go, {
     screenshot(id="PPGISmap")
   })
@@ -629,6 +624,7 @@ server <- function(input, output, session) {
       #print(VECTOR_FILE_selected)
     }
     else { # if polygon is not selected
+      if(is.null(input$radioInt)){return()}
       landuse_palette_code_selected <- as.numeric(input$radioInt)
       #print(landuse_palette_code_selected)
       
