@@ -288,7 +288,7 @@ ui <- dashboardPage(
                 bsPopover("icon2", "Add an additional map", "Explore your region and aid in decision-making. Press the Reload Map button when uploaded", trigger = "hover", placement = "bottom"),
 
       
-      selectInput("field", tags$p(style = "font-size: 16px;","Choose a measure from the optional map to display:"), c("None", bmap_fields))),
+      selectInput("field", tags$p(style = "font-size: 16px;","Choose a measure from the optional map to display:"), 'N/A')),
       
       fluidRow(column(11, actionBttn(
         inputId = "clear_map",
@@ -493,14 +493,24 @@ server <- function(input, output, session) {
     screenshot(id="PPGISmap")
   })
   
+  # This code is for a new button to refresh the basemap
   observeEvent(input$reload_basemap, {
+    basemap_groups <<-c("OSM (default)", "Toner", "Toner Lite", "Open Topo Map", "ESRI World Imagery")
     if(basemap_type == 'raster'){
       leafletProxy(mapId='PPGISmap') %>%
-        clearImages()
+        clearImages() %>% 
+        addLayersControl(
+          baseGroups = basemap_groups,
+          # overlayGroups = c("Quakes", "Outline"),
+          options = layersControlOptions(collapsed = FALSE))
     }
     else if(basemap_type == 'vector'){
       leafletProxy(mapId='PPGISmap') %>%
-        removeShape(user_basemap) 
+        clearShapes(user_basemap) %>%
+        addLayersControl(
+          baseGroups = basemap_groups,
+          # overlayGroups = c("Quakes", "Outline"),
+          options = layersControlOptions(collapsed = FALSE))
     }
 
     # Here, we figure out if we have uploaded a basemap, if it is raster or vector, and load it
@@ -508,6 +518,7 @@ server <- function(input, output, session) {
       user_basemap <<- NULL
       basemap_type <<- 'None'
       basemap_groups <<-c("OSM (default)", "Toner", "Toner Lite", "Open Topo Map", "ESRI World Imagery")
+      updateSelectInput(inputId = 'field', choices = 'N/A')
       return()
     }
     else if (tools::file_ext(input$basemap_file$name[1]) == 'tif'){  # if it is a .tif raster
@@ -532,7 +543,7 @@ server <- function(input, output, session) {
       {if(is.null(user_basemap)) . 
         else if (basemap_type == 'raster') addRasterImage(map = ., x = user_basemap, group = basemap_name) 
         else addPolygons(map = ., 
-                         data = user_basemap, 
+                         data = user_basemap,
                          group = basemap_name, 
                          weight = 0.5,
                          fillOpacity = 0,
