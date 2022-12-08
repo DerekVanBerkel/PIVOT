@@ -408,7 +408,11 @@ server <- function(input, output, session) {
     if(input$textinp %in% names(rv$values)){
       showNotification('Cannot add duplicate category.', '', duration = 3, type = 'warning')
       return()
-      }
+    }
+    if(length(rv$values) > 11){
+      showNotification('Cannot add more than 12 categories. If you need to reset the list, click Reload Map.', '', duration = 3, type = 'warning')
+      return()
+    }
     
     names(newVal) <- input$textinp
     rv$values <- c(rv$values, newVal)
@@ -703,6 +707,7 @@ server <- function(input, output, session) {
         
         if (length(Sys.glob(name.glob)) > 0) file.remove(Sys.glob(name.glob))
         VECTOR_FILE %>%
+          left_join(data.frame(values, CAT = names(values)), by=c('SELECTED' = 'values')) %>%
           sf::st_write(dsn = name.shp, ## layer = "shpExport",
                        driver = "ESRI Shapefile", quiet = TRUE)
         
