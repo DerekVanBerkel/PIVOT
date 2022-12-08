@@ -506,7 +506,7 @@ server <- function(input, output, session) {
     }
     else if(basemap_type == 'vector'){
       leafletProxy(mapId='PPGISmap') %>%
-        clearShapes(user_basemap) %>%
+        clearGroup(basemap_name) %>%
         addLayersControl(
           baseGroups = basemap_groups,
           # overlayGroups = c("Quakes", "Outline"),
