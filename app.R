@@ -296,7 +296,7 @@ ui <- dashboardPage(
                 bsPopover("icon2", "Add an additional map", "Explore your region and aid in decision-making. Press the Reload Map button when uploaded", trigger = "hover", placement = "bottom"),
 
       
-      selectInput("field", tags$p(style = "font-size: 16px;","Choose a measure from the optional map to display:"), 'N/A')),
+      selectInput("field", tags$p(style = "font-size: 16px;","Choose a measure from the optional map to display:"), 'N/A'),
       
       fluidRow(column(11, actionBttn(
         inputId = "reload_basemap",
@@ -306,7 +306,7 @@ ui <- dashboardPage(
         style = "unite",
         icon = icon("map"),
         block = TRUE
-      ))),
+      )))),
       
       hr(),
       fluidRow(column(3, verbatimTextOutput("value"))),
@@ -333,11 +333,12 @@ ui <- dashboardPage(
       #"Choose the groups that you want to add to the map, and click the map to indicate these preferences"
     
       awesomeRadio("radioInt",  
-                    label = tags$p(style = "font-size: 16px;",
-                            span("4. Choose categories and click on the map to prioritize"),
-                            span(icon("info-circle"), id = "icon4", style = "color: blue")),
-                            status= "success", 
-                            choices=values),
+                   label = tags$p(style = "font-size: 16px;",
+                   span("4. Choose categories and click on the map to prioritize"),
+                   span(icon("info-circle"), id = "icon4", style = "color: blue")),
+                   status= "success", 
+                   choices=values,
+                   selected = 'None'),
       bsPopover("icon4", "Choose a mapping category", "Click the circle to left to choose mapping categories you want to add to the map. click the map to indicate these preferences", trigger = "hover", placement = "bottom"),
       
                      
