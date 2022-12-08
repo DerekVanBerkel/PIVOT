@@ -22,7 +22,7 @@ library(shinyjs)
 
 
 options(shiny.maxRequestSize=1000000000) 
-values <- c("None" = NA)
+values <- c("No Category" = NA)
 bmap_fields <- NULL
 user_basemap <- NULL
 basemap_type <- 'None'
@@ -338,7 +338,7 @@ ui <- dashboardPage(
                    span(icon("info-circle"), id = "icon4", style = "color: blue")),
                    status= "success", 
                    choices=values,
-                   selected = 'None'),
+                   selected = 'No Category'),
       bsPopover("icon4", "Choose a mapping category", "Click the circle to left to choose mapping categories you want to add to the map. click the map to indicate these preferences", trigger = "hover", placement = "bottom"),
       
                      
@@ -396,7 +396,7 @@ ui <- dashboardPage(
 server <- function(input, output, session) {
   
   ###observe user categories input
-  value <- c("None" = NA)
+  value <- c("No Category" = NA)
   rv <- reactiveValues(values=value)
   print(rv)
   
@@ -429,7 +429,7 @@ server <- function(input, output, session) {
       addPolygons(
         data=VECTOR_FILE,
         layerId=~PPGIS_CODE,
-        #group='base_polygons',
+        group='base_polygons',
         weight=1.5,
         fillOpacity=0,
         color = 'black',
@@ -475,19 +475,21 @@ server <- function(input, output, session) {
         as.character()
     }
     leafletProxy(mapId = 'PPGISmap') %>%
-      removeShape(VECTOR_FILE) %>%
+      clearGroup('base_polygons') %>%
       addPolygons(
         data=VECTOR_FILE,
         layerId=~PPGIS_CODE,
-        #group='base_polygons',
+        group='base_polygons',
         weight=1.5,
         fillOpacity=0,
         color = 'black',
-        options = pathOptions(pane = "poly_layer"))
+        options = pathOptions(pane = "poly_layer")) %>%
+      fitBounds(base_map_bounds[1], base_map_bounds[2], base_map_bounds[3], base_map_bounds[4])
     
     # reset categories
-    rv$values <- c("None" = NA)
-    updateRadioButtons(session,inputId ="radioInt",choices=rv$values)
+    rv$values <- c("No Category" = NA)
+    landuse_palette_code_selected <- NA
+    updateRadioButtons(session,inputId ="radioInt",choices=rv$values, selected = 'No Category')
   })
   
   # Event to take a screenshot
@@ -638,6 +640,7 @@ server <- function(input, output, session) {
         addPolygons(
           data=VECTOR_FILE_selected,
           layerId=~PPGIS_CODE,
+          group='base_polygons',
           weight=1,
           fillOpacity=0,
           color = 'black',
@@ -669,6 +672,7 @@ server <- function(input, output, session) {
         addPolygons(
           data=VECTOR_FILE,
           layerId=~PPGIS_CODE,
+          group='base_polygons',
           weight=1.5,
           fillOpacity=0.5,
           color = ~map_pallete2(SELECTED),
