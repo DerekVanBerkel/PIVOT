@@ -272,7 +272,15 @@ ui <- dashboardPage(
                 buttonLabel = "Browse to upload spatial data",
                 accept = c(".shp",".dbf",".sbn",".sbx",".shx",".prj", ".gpkg", ".geojson", ".zip")),
                 
-                
+      fluidRow(column(11, actionBttn(
+        inputId = "clear_map",
+        label = "Reload Map",
+        color = "success",
+        size = "md",
+        style = "unite",
+        icon = icon("map"),
+        block = TRUE
+      ))),          
       
                 
       wellPanel(
@@ -289,16 +297,6 @@ ui <- dashboardPage(
 
       
       selectInput("field", tags$p(style = "font-size: 16px;","Choose a measure from the optional map to display:"), 'N/A')),
-      
-      fluidRow(column(11, actionBttn(
-        inputId = "clear_map",
-        label = "Reload Map",
-        color = "success",
-        size = "md",
-        style = "unite",
-        icon = icon("map"),
-        block = TRUE
-      ))),
       
       fluidRow(column(11, actionBttn(
         inputId = "reload_basemap",
@@ -406,7 +404,7 @@ server <- function(input, output, session) {
     newVal <- length(rv$values)  
     
     if(input$textinp %in% names(rv$values)){
-      showNotification('Error: cannot add duplicate category.', '', duration = 3, type = 'error')
+      showNotification('Cannot add duplicate category.', '', duration = 3, type = 'warning')
       return()
       }
     
@@ -646,7 +644,7 @@ server <- function(input, output, session) {
     }
     else { # if polygon is not selected
       if(is.null(input$radioInt)){
-        showNotification('Error: please select a category to assign.', '', duration = 5, type = 'error')
+        showNotification('Please select a category to assign.', '', duration = 5, type = 'warning')
         return()}
       landuse_palette_code_selected <- as.numeric(input$radioInt)
       #print(landuse_palette_code_selected)
