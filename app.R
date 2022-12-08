@@ -167,7 +167,7 @@ $(document).ready(function(){
 #ppgis <- function{data = ,  }
 
 # #load shapefile
-VECTOR_FILE <- st_read(system.file("shape/nc.shp", package="sf")) %>%
+VECTOR_FILE <<- st_read(system.file("shape/nc.shp", package="sf")) %>%
   dplyr::mutate(PPGIS_CODE = as.character(row_number()),SELECTED = NA) %>%
   dplyr::select(PPGIS_CODE, SELECTED, geometry) %>% ## everything()
   sf::st_transform(4326)
@@ -377,10 +377,10 @@ ui <- dashboardPage(
         "<p style = 'text-align: center;'><small>&copy; - <a href='https://www.linkedin.com/in/tgestabrook/' target='_blank'>ThomasEstabrook.com</a> - <script>document.write(yyyy);</script></small></p>",
         "<p style = 'text-align: center;'><small>&copy; - <a href='https://www.linkedin.com/in/rahul-agrawal-bejarano-5b395774/' target='_blank'>RahulAgrawalBejarano.com</a> - <script>document.write(yyyy);</script></small></p>",
         "<p style = 'text-align: center;'><small>&copy; - <a href='https://www.researchgate.net/profile/Nathan-Fox-8' target='_blank'>NathanFox.com</a> - <script>document.write(yyyy);</script></small></p>"))
-    )
+    ), downloadButton(outputId = "download_shp", label = "Download Map")
   ),
   dashboardBody(theme_blue_gradient,
-                leafletOutput('PPGISmap', width='100%', height='850'), 
+                leafletOutput('PPGISmap', width='100%', height='650'), 
                 div(style= "left:1500px; right:40px; bottom:60px; position:fixed; cursor:inherit; z-index: 10000;", 
                     wellPanel(
                       style = "padding: 8px; border-bottom: 1px solid #CCC; background: #EBEDF0;",
@@ -388,7 +388,7 @@ ui <- dashboardPage(
                 div(style= "left:1500px; right:40px; bottom:0px; position:fixed; cursor:inherit; z-index: 10000;", 
                     wellPanel(
                       style = "padding: 8px; border-bottom: 1px solid #CCC; background: #EBEDF0;",
-                      HTML("Download your map data?"), downloadButton("download_shp", "Download Map")))
+                      HTML("Download your map data?")))
   )
 )
 
@@ -400,6 +400,7 @@ server <- function(input, output, session) {
   rv <- reactiveValues(values=value)
   print(rv)
   
+  # Event to add new categories to list
   observeEvent(input$labbutton,{
     req(input$textinp)
     newVal <- length(rv$values)  
@@ -415,6 +416,7 @@ server <- function(input, output, session) {
     print(rv$values)
   })
   
+  # Renders the map output
   output$PPGISmap <- renderLeaflet({
     createMap() %>%
       addMapPane('base_layers', 410) %>%  # This ensures the base layers will render below the clickable polygon layer
@@ -488,11 +490,12 @@ server <- function(input, output, session) {
     updateRadioButtons(session,inputId ="radioInt",choices=rv$values)
   })
   
+  # Event to take a screenshot
   observeEvent(input$go, {
     screenshot(id="PPGISmap")
   })
   
-  # This code is for a new button to refresh the basemap
+  # Event for clicking basemap button. Checks if basemap exists and loads it in
   observeEvent(input$reload_basemap, {
     basemap_groups <<-c("OSM (default)", "Toner", "Toner Lite", "Open Topo Map", "ESRI World Imagery")
     if(basemap_type == 'raster'){
@@ -580,7 +583,7 @@ server <- function(input, output, session) {
     }
   }, ignoreInit = TRUE)
   
-  
+  # refresh legend?
   observe({
     proxy <- leafletProxy("PPGISmap", data = VECTOR_FILE)
     
@@ -603,7 +606,7 @@ server <- function(input, output, session) {
     }
   })
   
-  # just testing here
+  # Event to handle clicking polygons to assign categories
   observeEvent(input$PPGISmap_shape_click, {
     polygon_clicked <- input$PPGISmap_shape_click
     
@@ -674,53 +677,40 @@ server <- function(input, output, session) {
         )
       print(VECTOR_FILE$SELECTED)
     }
-    
-    
-    
-    
-    
-    output$download_shp <- downloadHandler(
-      
-      filename <- function() {
-        "Data_shpExport.zip"
-
-      },
-      content = function(file) {
-        withProgress(message = "Exporting Data", {
-          
-          incProgress(0.5)
-          tmp.path <- dirname(file)
-          
-          name.base <- file.path(tmp.path, "PivotOutput")
-          name.glob <- paste0(name.base, ".*")
-          name.shp  <- paste0(name.base, ".shp")
-          name.zip  <- paste0(name.base, ".zip")
-          
-          
-          
-          if (length(Sys.glob(name.glob)) > 0) file.remove(Sys.glob(name.glob))
-          VECTOR_FILE %>%
-          replace(is.na(SELECTED),"NONE")%>%
-          sf::st_write(dsn = name.shp, ## layer = "shpExport",
-                       driver = "ESRI Shapefile", quiet = TRUE)
-          
-          zip::zipr(zipfile = name.zip, files = Sys.glob(name.glob))
-          req(file.copy(name.zip, file))
-          
-          if (length(Sys.glob(name.glob)) > 0) file.remove(Sys.glob(name.glob))
-          
-          incProgress(0.5)
-        })
-      }  
-    )
-    
-    
   })
   
-  
-  
-  
-  
+  # Download shapefile
+  output$download_shp <- downloadHandler(
+    
+    filename <- function() {"Data_shpExport.zip"},
+    content = function(file) {
+      withProgress(message = "Exporting Data", {
+        
+        incProgress(0.5)
+        tmp.path <- dirname(file)
+        
+        name.base <- file.path(tmp.path, "PivotOutput")
+        name.glob <- paste0(name.base, ".*")
+        name.shp  <- paste0(name.base, ".shp")
+        name.zip  <- paste0(name.base, ".zip")
+        
+        print(tmp.path)
+        print(name.glob)
+        
+        if (length(Sys.glob(name.glob)) > 0) file.remove(Sys.glob(name.glob))
+        VECTOR_FILE %>%
+          sf::st_write(dsn = name.shp, ## layer = "shpExport",
+                       driver = "ESRI Shapefile", quiet = TRUE)
+        
+        zip::zipr(zipfile = name.zip, files = Sys.glob(name.glob))
+        req(file.copy(name.zip, file))
+        
+        if (length(Sys.glob(name.glob)) > 0) file.remove(Sys.glob(name.glob))
+        
+        incProgress(0.5)
+      })
+    }  
+  )
   
 }
 
