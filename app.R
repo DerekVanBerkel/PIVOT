@@ -404,6 +404,12 @@ server <- function(input, output, session) {
   observeEvent(input$labbutton,{
     req(input$textinp)
     newVal <- length(rv$values)  
+    
+    if(input$textinp %in% names(rv$values)){
+      showNotification('Error: cannot add duplicate category.', '', duration = 3, type = 'error')
+      return()
+      }
+    
     names(newVal) <- input$textinp
     rv$values <- c(rv$values, newVal)
     updateRadioButtons(session,inputId ="radioInt",choices=rv$values)
@@ -476,7 +482,11 @@ server <- function(input, output, session) {
         weight=1.5,
         fillOpacity=0,
         color = 'black',
-        options = pathOptions(pane = "poly_layer")) 
+        options = pathOptions(pane = "poly_layer"))
+    
+    # reset categories
+    rv$values <- c("None" = NA)
+    updateRadioButtons(session,inputId ="radioInt",choices=rv$values)
   })
   
   observeEvent(input$go, {
@@ -624,7 +634,9 @@ server <- function(input, output, session) {
       #print(VECTOR_FILE_selected)
     }
     else { # if polygon is not selected
-      if(is.null(input$radioInt)){return()}
+      if(is.null(input$radioInt)){
+        showNotification('Error: please select a category to assign.', '', duration = 5, type = 'error')
+        return()}
       landuse_palette_code_selected <- as.numeric(input$radioInt)
       #print(landuse_palette_code_selected)
       
