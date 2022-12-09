@@ -5,6 +5,13 @@ library(dplyr)
 library(tmap)
 library(zip)
 library(mapview)
+library(shiny)
+library(leaflet)
+library(sf)
+library(dplyr)
+library(tmap)
+library(zip)
+library(mapview)
 library(shinyscreenshot)
 library(shinydashboard)
 library(tidyverse)
@@ -20,15 +27,29 @@ library(fontawesome)
 library(shinyBS)
 library(shinyjs)
 
-
+#####################################################################################################
+############################### definition of global varibles #######################################
+#####################################################################################################
 options(shiny.maxRequestSize=1000000000) 
 values <- c("No Category" = NA)
 bmap_fields <- NULL
 user_basemap <- NULL
 basemap_type <- 'None'
 basemap_groups <<-c("OSM (default)", "Toner", "Toner Lite", "Open Topo Map", "ESRI World Imagery")
+##Color palettes
+color_palette_list2 = c(RColorBrewer::brewer.pal(n = 9, name = "Set1")) # for color assignments for polygons
+color_palette_list = c("#ffffff", color_palette_list2) # for legend
+map_palette <- colorFactor(palette = color_palette_list2, domain=1:9, na.color = "#FFFFFF00") # for fill
+map_palette2 <- colorFactor(palette = color_palette_list2, domain=1:9, na.color = "black") # for borders
+###use updateradiobutton, and text input https://shiny.rstudio.com/reference/shiny/0.14/updateRadioButtons.html
+
+#####################################################################################################
+############################### definition of model functions #######################################
+#####################################################################################################
 
 
+##this function defines the colors for the base-colors for the dashboard based on 
+##the "dashboardthemes" library
 theme_blue_gradient <- shinyDashboardThemeDIY(
   
   ### general
@@ -154,17 +175,6 @@ theme_blue_gradient <- shinyDashboardThemeDIY(
   
 )
 
-js <- '
-$(document).ready(function(){
-  $("[id^=sw-content-]").on("shown", function(){
-    $(".sidebar").css({"overflow-y": "visible"});
-  }).on("hidden", function(){
-    $(".sidebar").css({"overflow-y": "auto"});
-  });
-});
-'
-
-#ppgis <- function{data = ,  }
 
 # #load shapefile
 VECTOR_FILE <<- st_read(system.file("shape/nc.shp", package="sf")) %>%
@@ -208,71 +218,67 @@ catch_vec <- function(file_path){
 # files. It relies on catch_vec to handle errors if the resulting files are 
 # problematic.
 load_spatial <- function(file_in){
-    if(any(str_detect(file_in$datapath, '.shp'))){  # if shapefile
-      # the upload gives the files unique names, so st_read() won't recognize 
-      # them as belonging to the same shapefile. Thus we rename them.
-      for (path in file_in$datapath){
-        newpath <- sub('.\\.', 'shapefile.', path)
-        file.copy(path, newpath)  # create new set of properly named files
-      }
-      # locate which file is the .shp file to feed into st_read()
-      shppth_idx <- which(str_detect(file_in$datapath, '\\.shp'))
-      shppth <- sub('.\\.', 'shapefile.', file_in$datapath[shppth_idx])
-      spatial_data <- catch_vec(shppth)
+  if(any(str_detect(file_in$datapath, '.shp'))){  # if shapefile
+    # the upload gives the files unique names, so st_read() won't recognize 
+    # them as belonging to the same shapefile. Thus we rename them.
+    for (path in file_in$datapath){
+      newpath <- sub('.\\.', 'shapefile.', path)
+      file.copy(path, newpath)  # create new set of properly named files
     }
-    else if (any(str_detect(file_in$datapath, '.zip'))){  # zipped shapefile
-      shppth <- sub('.\\....', '', file_in$datapath)  # get temporary file location
-      zip::unzip(file_in$datapath, exdir = shppth)  # unzip to temp location
-      shpname <- list.files(path = shppth, pattern = '\\.shp')[1]  # get name of shapefile in temp location
-      req(shpname)  # if the zip has no shapefile, do not try to load it
-      spatial_data <- catch_vec(paste0(shppth, shpname))
-    }
-    else{ # if not a shapefile, proceed as normal
-      spatial_data <<- catch_vec(file_in$datapath)
-    }
+    # locate which file is the .shp file to feed into st_read()
+    shppth_idx <- which(str_detect(file_in$datapath, '\\.shp'))
+    shppth <- sub('.\\.', 'shapefile.', file_in$datapath[shppth_idx])
+    spatial_data <- catch_vec(shppth)
+  }
+  else if (any(str_detect(file_in$datapath, '.zip'))){  # zipped shapefile
+    shppth <- sub('.\\....', '', file_in$datapath)  # get temporary file location
+    zip::unzip(file_in$datapath, exdir = shppth)  # unzip to temp location
+    shpname <- list.files(path = shppth, pattern = '\\.shp')[1]  # get name of shapefile in temp location
+    req(shpname)  # if the zip has no shapefile, do not try to load it
+    spatial_data <- catch_vec(paste0(shppth, shpname))
+  }
+  else{ # if not a shapefile, proceed as normal
+    spatial_data <<- catch_vec(file_in$datapath)
+  }
   return(spatial_data)
 }
 
-#Land Use categories and corresponding colors
-Land_Use_Categories<- c('Residential', 'Commercial', 'Industrial', 'Institutional', 'Recreational')
-landuse_cat <- data.frame(Land_Use_Categories)
-color_palette_list2 = c(RColorBrewer::brewer.pal(n = 9, name = "Set1")) # for color assignments for polygons
-color_palette_list = c("#ffffff", color_palette_list2) # for legend
-map_pallette <- colorFactor(palette = color_palette_list2, domain=1:9, na.color = "#FFFFFF00") # for fill
-map_pallete2 <- colorFactor(palette = color_palette_list2, domain=1:9, na.color = "black") # for borders
-###use updateradiobutton, and text input https://shiny.rstudio.com/reference/shiny/0.14/updateRadioButtons.html
+
+#####################################################################################################
+############################### definition of user interface ########################################
+#####################################################################################################
+
 
 # Define UI for application that draws a histogram
-
-
 ui <- dashboardPage(
   dashboardHeader(title = "PIVOT ", titleWidth = 250),
   dashboardSidebar(
     width = 300,
     
+    
     sidebarMenu(
+      ##give a slider to the sidebar this resolves needing to 
+      ##scroll the map
       class = "sidebar",
       style = "height: 90vh; overflow-y: auto;",
       
-      #tags$style(
-        # "#sidebarItemExpanded {
-        #     overflow: auto;
-        #     height: calc(100vh - 50px) !important;
-        # }"),
-      
       hr(),
-      # "Add a map as your PPGIS base, and press the Reload Map button when uploaded. If you simple want to test the application", tags$br(),
-      # "press the Reload Map button for test data"
+      ## We define the header outide of the widget as it also prompted the download, 
+      ## which interfered with the information button
       tags$p(style = "font-size: 16px;color: black;font-weight: bold;padding-left: 15px;padding-bottom: 0px",
              span("1. Add base map layer for",br(), "planning and press Reload Map"),br(),
+             ##this defines the in-line info icon 
              span(icon("info-circle"), id = "icon1", style = "color: blue; 15px;")
-      ),bsPopover("icon1", "Choose spatial data", "This include .shp, .gpkg, and .geojson for the base layer that you will use for planning. *Note shapefile must be accomponied by necessary additional files (.) You can also press Reload Map to test the application using data from North Carolina", trigger = "hover", placement = "bottom"),
+      ),
+      ## this function defines the info-circle text using the shinyBS library
+      bsPopover("icon1", "Choose spatial data", "This include .shp, .gpkg, and .geojson for the base layer that you will use for planning. *Note shapefile must be accomponied by necessary additional files (.) You can also press Reload Map to test the application using data from North Carolina", trigger = "hover", placement = "bottom"),
+      ## the widget prompts for uploading your data
       fileInput("filemap",
                 label = NULL, 
                 multiple = TRUE,
                 buttonLabel = "Browse to upload spatial data",
                 accept = c(".shp",".dbf",".sbn",".sbx",".shx",".prj", ".gpkg", ".geojson", ".zip")),
-                
+      ##this function loads the mapping layer
       fluidRow(column(11, actionBttn(
         inputId = "clear_map",
         label = "Reload Map",
@@ -283,43 +289,50 @@ ui <- dashboardPage(
         block = TRUE
       ))),          
       
-                
+      ## We use a well panel for this code to indicate it is a optional step after 
+      ## intial upload of the mapping layer
       wellPanel(
+        ## style formating that approximates the widget headers below
         tags$p(style = "font-size: 16px;color: black;font-weight: bold;padding-left: 15px;padding-bottom: 0px",
-                       span("2. Optional step. Add a map",br(), "for veiwing and press Reload",br(), "Map"),
-                       span(icon("info-circle"), id = "icon2", style = "color: blue")
-      ),
-      fileInput("basemap_file",
-                          label = NULL, 
-                          multiple = TRUE,
-                          buttonLabel = "Browse to upload spatial data",
-                          accept = c(".shp",".dbf",".sbn",".sbx",".shx",".prj", ".gpkg", ".geojson", ".zip")),
-                bsPopover("icon2", "Add an additional map", "Explore your region and aid in decision-making. Press the Reload Map button when uploaded", trigger = "hover", placement = "bottom"),
-
-      
-      selectInput("field", tags$p(style = "font-size: 16px;","Choose a measure from the optional map to display:"), 'N/A'),
-      
-      fluidRow(column(11, actionBttn(
-        inputId = "reload_basemap",
-        label = "Reload Basemap",
-        color = "success",
-        size = "md",
-        style = "unite",
-        icon = icon("map"),
-        block = TRUE
-      )))),
+               span("2. Optional step. Add a map",br(), "for veiwing and press Reload",br(), "Map"),
+               span(icon("info-circle"), id = "icon2", style = "color: blue")
+        ),
+        ## this widget allows you to upload additional layers for visualizing while
+        ## doing your ppgis exercise
+        fileInput("basemap_file",
+                  label = NULL, 
+                  multiple = TRUE,
+                  buttonLabel = "Browse to upload spatial data",
+                  accept = c(".shp",".dbf",".sbn",".sbx",".shx",".prj", ".gpkg", ".geojson", ".zip")),
+        bsPopover("icon2", "Add an additional map", "Explore your region and aid in decision-making. Press the Reload Map button when uploaded", trigger = "hover", placement = "bottom"),
+        
+        ## this function allows you to choose which field to visualize for the 
+        ## additional map layer
+        selectInput("field", tags$p(style = "font-size: 16px;","Choose a measure from the optional map to display:"), 'N/A'),
+        
+        ##button to add the additional layer to the ui
+        fluidRow(column(11, actionBttn(
+          inputId = "reload_basemap",
+          label = "Reload Basemap",
+          color = "success",
+          size = "md",
+          style = "unite",
+          icon = icon("map"),
+          block = TRUE
+        )))),
       
       hr(),
       fluidRow(column(3, verbatimTextOutput("value"))),
+      ## text input to add new radio options (mapping categories)
       textInput("textinp",
                 tags$p(style = "font-size: 16px;",
-                                span("3. Type in categories for mapping and click Add Map Category"),
-                                span(icon("info-circle"), id = "icon3", style = "color: blue"))
+                       span("3. Type in categories for mapping and click Add Map Category"),
+                       span(icon("info-circle"), id = "icon3", style = "color: blue"))
                 , placeholder = "Type here"),
       bsPopover("icon3", "Create categories for mapping", "For example, the category green space for prioritizing the location of these projects in your city. Press Add Map Category when you have finished typing", trigger = "hover", placement = "bottom"),
-                
-                
-                
+      
+      
+      ## action button to add new mapping categories
       fluidRow(column(11,actionBttn(
         inputId = "labbutton",
         label = "Add Map Category",
@@ -329,24 +342,22 @@ ui <- dashboardPage(
         icon = icon("pencil"),
         block = TRUE
       ))),
-
       
-      #"Choose the groups that you want to add to the map, and click the map to indicate these preferences"
-    
+      
+      ## this is radio button where you choose which category to add to the map
       awesomeRadio("radioInt",  
                    label = tags$p(style = "font-size: 16px;",
-                   span("4. Choose categories and click on the map to prioritize"),
-                   span(icon("info-circle"), id = "icon4", style = "color: blue")),
+                                  span("4. Choose categories and click on the map to prioritize"),
+                                  span(icon("info-circle"), id = "icon4", style = "color: blue")),
                    status= "success", 
                    choices=values,
                    selected = 'No Category'),
       bsPopover("icon4", "Choose a mapping category", "Click the circle to left to choose mapping categories you want to add to the map. click the map to indicate these preferences", trigger = "hover", placement = "bottom"),
       
-                     
-                     hr(),
       
+      hr(),
       
-      
+      ## This section of code adds the authors, images and link to the sidepanel
       HTML(paste0(
         "<br>",
         "<a href='https://seas.umich.edu/' target='_blank'><img style = 'display: block; margin-left: auto; margin-right: auto;' src='UM_SEAS_Logo.png' width = '186'></a>",
@@ -380,8 +391,11 @@ ui <- dashboardPage(
         "<p style = 'text-align: center;'><small>&copy; - <a href='https://www.researchgate.net/profile/Nathan-Fox-8' target='_blank'>NathanFox.com</a> - <script>document.write(yyyy);</script></small></p>"))
     ), downloadButton(outputId = "download_shp", label = "Download Map")
   ),
+  ## this code add the new color theme defined at shinyDashboardthemesDIY()
   dashboardBody(theme_blue_gradient,
+                ## here is the map
                 leafletOutput('PPGISmap', width='100%', height='650'), 
+                ## this fixes the location of the download screenshot and data button
                 div(style= "left:1500px; right:40px; bottom:60px; position:fixed; cursor:inherit; z-index: 10000;", 
                     wellPanel(
                       style = "padding: 8px; border-bottom: 1px solid #CCC; background: #EBEDF0;",
@@ -392,6 +406,11 @@ ui <- dashboardPage(
                       HTML("Download your map data?")))
   )
 )
+
+
+#####################################################################################################
+############################### definition of server ################################################
+#####################################################################################################
 
 
 server <- function(input, output, session) {
@@ -521,7 +540,7 @@ server <- function(input, output, session) {
           # overlayGroups = c("Quakes", "Outline"),
           options = layersControlOptions(collapsed = FALSE))
     }
-
+    
     # Here, we figure out if we have uploaded a basemap, if it is raster or vector, and load it
     if(is.null(input$basemap_file)){  # if no file
       user_basemap <<- NULL
@@ -546,7 +565,7 @@ server <- function(input, output, session) {
       bmap_fields <<- colnames(user_basemap %>% dplyr::select(where(is.numeric)))
       # Update the field selector with the basemap's fields
       updateSelectInput(inputId = 'field', choices = bmap_fields[!bmap_fields == 'geometry']) # trying to load geometry column causes crash
-      }
+    }
     leafletProxy(mapId='PPGISmap') %>%
       #  If there is a basemap, either display the raster or vector file.
       {if(is.null(user_basemap)) . 
@@ -680,8 +699,8 @@ server <- function(input, output, session) {
           group='base_polygons',
           weight=1.5,
           fillOpacity=0.5,
-          color = ~map_pallete2(as.factor(SELECTED)),
-          fillColor = ~map_pallette(as.factor(SELECTED)),
+          color = ~map_palette2(as.factor(SELECTED)),
+          fillColor = ~map_palette(as.factor(SELECTED)),
           options = pathOptions(pane = "poly_layer")
         )
       print(VECTOR_FILE$SELECTED)
