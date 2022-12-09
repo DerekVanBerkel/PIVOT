@@ -674,10 +674,10 @@ server <- function(input, output, session) {
       if(is.null(input$radioInt)){
         showNotification('Please select a category to assign.', '', duration = 5, type = 'warning')
         return()}
-      print('val length')
-      print(length(rv$values))
-      if(length(rv$values) == 1){
-        showNotification('Please add a category to assign.', '', duration = 5, type = 'warning')
+      # print('val length')
+      # print(length(rv$values))
+      if(length(rv$values) < as.numeric(input$radioInt)){
+        showNotification('Please select a category to assign.', '', duration = 5, type = 'warning')
         return()
       }
 
