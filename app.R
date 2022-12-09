@@ -36,6 +36,17 @@ map_palette <- colorFactor(palette = color_palette_list2, domain=1:9, na.color =
 map_palette2 <- colorFactor(palette = color_palette_list2, domain=1:9, na.color = "black") # for borders
 ###use updateradiobutton, and text input https://shiny.rstudio.com/reference/shiny/0.14/updateRadioButtons.html
 
+## load shapefile and assign it as the default file
+VECTOR_FILE <<- st_read(system.file("shape/nc.shp", package="sf")) %>%
+  dplyr::mutate(PPGIS_CODE = as.character(row_number()),SELECTED = NA) %>%
+  dplyr::select(PPGIS_CODE, SELECTED, geometry) %>% ## everything()
+  sf::st_transform(4326)
+
+Default_file <- VECTOR_FILE
+base_map_bounds <<- Default_file %>% 
+  st_bbox() %>% 
+  as.character()
+
 #####################################################################################################
 ############################### definition of model functions #######################################
 #####################################################################################################
@@ -167,18 +178,6 @@ theme_blue_gradient <- shinyDashboardThemeDIY(
   ,tableBorderRowSize = 1
   
 )
-
-
-# #load shapefile
-VECTOR_FILE <<- st_read(system.file("shape/nc.shp", package="sf")) %>%
-  dplyr::mutate(PPGIS_CODE = as.character(row_number()),SELECTED = NA) %>%
-  dplyr::select(PPGIS_CODE, SELECTED, geometry) %>% ## everything()
-  sf::st_transform(4326)
-
-Default_file <- VECTOR_FILE
-base_map_bounds <<- Default_file %>% 
-  st_bbox() %>% 
-  as.character()
 
 # Creates base map
 createMap <- function() {  
@@ -428,9 +427,11 @@ server <- function(input, output, session) {
     }
     
     names(newVal) <- input$textinp
-    rv$values <- c(rv$values, newVal)
-    updateRadioButtons(session,inputId ="radioInt",choices=rv$values, selected = rv$values)
+    rv$values <<- c(rv$values, newVal)
+    updateAwesomeRadio(session,inputId ="radioInt",choices=rv$values)
+    print('New values:')
     print(rv$values)
+    print(length(rv$values))
   })
   
   # Renders the map output
@@ -470,11 +471,11 @@ server <- function(input, output, session) {
   # uploaded and then uses a proxy to add it to the leaflet map
   observeEvent(input$clear_map, {  # reload all map contents with whatever file was uploaded
     
-    if (is.null(input$filemap)) {  # if no upload, use default NC
+    if (is.null(input$filemap)) {  # if no upload, use default
       VECTOR_FILE <<- Default_file
       is_selected <<- NA
       print(summary(VECTOR_FILE))
-      print(colnames(VECTOR_FILE))
+      #print(colnames(VECTOR_FILE))
       
       base_map_bounds <<- VECTOR_FILE %>% 
         st_bbox() %>% 
@@ -505,8 +506,11 @@ server <- function(input, output, session) {
     
     # reset categories
     rv$values <- c("No Category" = NA)
-    landuse_palette_code_selected <- NA
-    updateRadioButtons(session,inputId ="radioInt",choices=rv$values, selected = 'No Category')
+    landuse_palette_code_selected <<- NA
+    updateAwesomeRadio(session,inputId ="radioInt",choices=rv$values)
+    print(length(rv$values))
+    print('radio status:')
+    print(input$radioInt)
   })
   
   # Event to take a screenshot
@@ -670,6 +674,13 @@ server <- function(input, output, session) {
       if(is.null(input$radioInt)){
         showNotification('Please select a category to assign.', '', duration = 5, type = 'warning')
         return()}
+      print('val length')
+      print(length(rv$values))
+      if(length(rv$values) == 1){
+        showNotification('Please add a category to assign.', '', duration = 5, type = 'warning')
+        return()
+      }
+
       landuse_palette_code_selected <- as.numeric(input$radioInt)
       print(landuse_palette_code_selected)
       
