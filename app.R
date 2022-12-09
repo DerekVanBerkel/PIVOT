@@ -236,10 +236,10 @@ load_spatial <- function(file_in){
 #Land Use categories and corresponding colors
 Land_Use_Categories<- c('Residential', 'Commercial', 'Industrial', 'Institutional', 'Recreational')
 landuse_cat <- data.frame(Land_Use_Categories)
-color_palette_list2 = c("#a6cee3", "#1f78b4","#b2df8a","#33a02c","#fb9a99","#e31a1c","#fdbf6f","#ff7f00","#cab2d6","#6a3d9a","#ffff99", "#b15928") # for color assignments for polygons
+color_palette_list2 = c(RColorBrewer::brewer.pal(n = 9, name = "Set1")) # for color assignments for polygons
 color_palette_list = c("#ffffff", color_palette_list2) # for legend
-map_pallette <- colorFactor(palette = color_palette_list2, domain=1:12, na.color = "#FFFFFF00") # for fill
-map_pallete2 <- colorFactor(palette = color_palette_list2, domain=1:12, na.color = "black") # for borders
+map_pallette <- colorFactor(palette = color_palette_list2, domain=1:9, na.color = "#FFFFFF00") # for fill
+map_pallete2 <- colorFactor(palette = color_palette_list2, domain=1:9, na.color = "black") # for borders
 ###use updateradiobutton, and text input https://shiny.rstudio.com/reference/shiny/0.14/updateRadioButtons.html
 
 # Define UI for application that draws a histogram
