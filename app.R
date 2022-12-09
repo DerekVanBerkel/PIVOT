@@ -5,13 +5,6 @@ library(dplyr)
 library(tmap)
 library(zip)
 library(mapview)
-library(shiny)
-library(leaflet)
-library(sf)
-library(dplyr)
-library(tmap)
-library(zip)
-library(mapview)
 library(shinyscreenshot)
 library(shinydashboard)
 library(tidyverse)
@@ -429,14 +422,14 @@ server <- function(input, output, session) {
       showNotification('Cannot add duplicate category.', '', duration = 3, type = 'warning')
       return()
     }
-    if(length(rv$values) > 12){
-      showNotification('Cannot add more than 12 categories. If you need to reset the list, click Reload Map.', '', duration = 3, type = 'warning')
+    if(length(rv$values) > 9){
+      showNotification('Cannot add more than 9 categories. If you need to reset the list, click Reload Map.', '', duration = 3, type = 'warning')
       return()
     }
     
     names(newVal) <- input$textinp
     rv$values <- c(rv$values, newVal)
-    updateRadioButtons(session,inputId ="radioInt",choices=rv$values)
+    updateRadioButtons(session,inputId ="radioInt",choices=rv$values, selected = rv$values)
     print(rv$values)
   })
   
@@ -464,7 +457,7 @@ server <- function(input, output, session) {
         options = layersControlOptions(collapsed = FALSE)) %>%
       addLegend(
         # pal=landuse_pallete,
-        values=landuse_cat$Land_Use_Categories,
+        #values=landuse_cat$Land_Use_Categories,
         position='bottomleft',
         title="Legend of Categories",
         opacity=0.6,
@@ -744,8 +737,3 @@ server <- function(input, output, session) {
 }
 
 shinyApp(ui, server)
-
-
-
-
-
