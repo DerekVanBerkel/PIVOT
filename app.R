@@ -236,9 +236,10 @@ load_spatial <- function(file_in){
 #Land Use categories and corresponding colors
 Land_Use_Categories<- c('Residential', 'Commercial', 'Industrial', 'Institutional', 'Recreational')
 landuse_cat <- data.frame(Land_Use_Categories)
-color_palette_list = c("#ffffff","#a6cee3", "#1f78b4","#b2df8a","#33a02c","#fb9a99","#e31a1c","#fdbf6f","#ff7f00","#cab2d6","#6a3d9a","#ffff99", "#b15928")
-map_pallette <- colorBin(palette =  c("#a6cee3", "#1f78b4","#b2df8a","#33a02c","#fb9a99","#e31a1c","#fdbf6f","#ff7f00","#cab2d6","#6a3d9a","#ffff99", "#b15928"), domain=1:12, na.color = "#FFFFFF00")
-map_pallete2 <- colorBin(palette = color_palette_list, domain=1:13, na.color = "black") # for borders
+color_palette_list2 = c("#a6cee3", "#1f78b4","#b2df8a","#33a02c","#fb9a99","#e31a1c","#fdbf6f","#ff7f00","#cab2d6","#6a3d9a","#ffff99", "#b15928") # for color assignments for polygons
+color_palette_list = c("#ffffff", color_palette_list2) # for legend
+map_pallette <- colorFactor(palette = color_palette_list2, domain=1:12, na.color = "#FFFFFF00") # for fill
+map_pallete2 <- colorFactor(palette = color_palette_list2, domain=1:12, na.color = "black") # for borders
 ###use updateradiobutton, and text input https://shiny.rstudio.com/reference/shiny/0.14/updateRadioButtons.html
 
 # Define UI for application that draws a histogram
@@ -409,7 +410,7 @@ server <- function(input, output, session) {
       showNotification('Cannot add duplicate category.', '', duration = 3, type = 'warning')
       return()
     }
-    if(length(rv$values) > 11){
+    if(length(rv$values) > 12){
       showNotification('Cannot add more than 12 categories. If you need to reset the list, click Reload Map.', '', duration = 3, type = 'warning')
       return()
     }
@@ -658,7 +659,7 @@ server <- function(input, output, session) {
         showNotification('Please select a category to assign.', '', duration = 5, type = 'warning')
         return()}
       landuse_palette_code_selected <- as.numeric(input$radioInt)
-      #print(landuse_palette_code_selected)
+      print(landuse_palette_code_selected)
       
       # Get current table selected
       #row_clicked <- input$groups_table_cell_clicked
@@ -679,8 +680,8 @@ server <- function(input, output, session) {
           group='base_polygons',
           weight=1.5,
           fillOpacity=0.5,
-          color = ~map_pallete2(SELECTED),
-          fillColor = ~map_pallette(SELECTED),
+          color = ~map_pallete2(as.factor(SELECTED)),
+          fillColor = ~map_pallette(as.factor(SELECTED)),
           options = pathOptions(pane = "poly_layer")
         )
       print(VECTOR_FILE$SELECTED)
