@@ -243,18 +243,19 @@ load_spatial <- function(file_in){
 
 # Define UI for application that draws a histogram
 ui <- dashboardPage(
-  dashboardHeader(title = "PIVOT ", titleWidth = 250),
+  
+  dashboardHeader(title = tags$a(href='https://github.com/DerekVanBerkel/PIVOT',
+                                         tags$img(src='PPGIS_logo2.PNG',height="85%", width="107%")), titleWidth = '300'),
   dashboardSidebar(
     width = 300,
-    
-    
     sidebarMenu(
+      
       ##give a slider to the sidebar this resolves needing to 
       ##scroll the map
       class = "sidebar",
       style = "height: 90vh; overflow-y: auto;",
       
-      hr(),
+      p(),
       ## We define the header outide of the widget as it also prompted the download, 
       ## which interfered with the information button
       tags$p(style = "font-size: 16px;color: black;font-weight: bold;padding-left: 15px;padding-bottom: 0px",
@@ -281,10 +282,9 @@ ui <- dashboardPage(
         block = TRUE
       ))),          
       
-      ## We use a well panel for this code to indicate it is a optional step after 
-      ## intial upload of the mapping layer
-      wellPanel(
-        ## style formating that approximates the widget headers below
+      
+      ## initial upload of the mapping layer
+      ## style formatting that approximates the widget headers below
         tags$p(style = "font-size: 16px;color: black;font-weight: bold;padding-left: 15px;padding-bottom: 0px",
                span("2. Optional step. Add a map",br(), "for veiwing and press Reload",br(), "Map"),
                span(icon("info-circle"), id = "icon2", style = "color: blue")
@@ -311,7 +311,7 @@ ui <- dashboardPage(
           style = "unite",
           icon = icon("map"),
           block = TRUE
-        )))),
+        ))),
       
       hr(),
       fluidRow(column(3, verbatimTextOutput("value"))),
@@ -349,6 +349,30 @@ ui <- dashboardPage(
       
       hr(),
       
+      tags$p(style = "font-size: 16px;color: black;font-weight: bold;padding-left: 15px;padding-bottom: 0px",
+             span("5. Optional step. Download your",br(), "map or  data"),
+             span(icon("info-circle"), id = "icon5", style = "color: blue")
+      ),
+      bsPopover("icon5", "Download your production", "For example, ", trigger = "hover", placement = "bottom"),
+      
+      fluidRow(column(11, actionBttn(
+        inputId = "go",
+        label = "Download Map",
+        color = "success",
+        size = "md",
+        style = "unite",
+        icon = icon("camera"),
+        block = TRUE
+      ))),
+      
+      fluidRow(column(11,downloadBttn(
+        outputId = "download_shp",
+        label = "Download Map Data",
+        style = "unite",
+        color = "success",
+        icon = icon("download")))),
+      
+      hr(),
       ## This section of code adds the authors, images and link to the sidepanel
       HTML(paste0(
         "<br>",
@@ -362,17 +386,7 @@ ui <- dashboardPage(
         "<br>"
       )),   
       
-      HTML(paste0(
-        "<br><br><br><br><br><br><br><br><br>",
-        "<table style='margin-left:auto; margin-right:auto;'>",
-        "<tr>",
-        "<td style='padding: 5px;'><a href='https://scholar.google.com/citations?user=ZXsytH8AAAAJ&hl=en' target='_blank'><i class='fab fa-google fa-lg'></i></a></td>",
-        "<td style='padding: 5px;'><a href='https://twitter.com/derekvanberkel' target='_blank'><i class='fab fa-twitter fa-lg'></i></a></td>",
-        "<td style='padding: 5px;'><a href='https://www.instagram.com/nationalparkservice' target='_blank'><i class='fab fa-university fa-lg'></i></a></td>",
-        "</tr>",
-        "</table>",
-        "<br>")),
-      HTML(paste0(
+     HTML(paste0(
         "<script>",
         "var today = new Date();",
         "var yyyy = today.getFullYear();",
@@ -381,21 +395,13 @@ ui <- dashboardPage(
         "<p style = 'text-align: center;'><small>&copy; - <a href='https://www.linkedin.com/in/tgestabrook/' target='_blank'>ThomasEstabrook.com</a> - <script>document.write(yyyy);</script></small></p>",
         "<p style = 'text-align: center;'><small>&copy; - <a href='https://www.linkedin.com/in/rahul-agrawal-bejarano-5b395774/' target='_blank'>RahulAgrawalBejarano.com</a> - <script>document.write(yyyy);</script></small></p>",
         "<p style = 'text-align: center;'><small>&copy; - <a href='https://www.researchgate.net/profile/Nathan-Fox-8' target='_blank'>NathanFox.com</a> - <script>document.write(yyyy);</script></small></p>"))
-    ), downloadButton(outputId = "download_shp", label = "Download Map")
+    )
   ),
   ## this code add the new color theme defined at shinyDashboardthemesDIY()
   dashboardBody(theme_blue_gradient,
                 ## here is the map
                 leafletOutput('PPGISmap', width='100%', height='650'), 
-                ## this fixes the location of the download screenshot and data button
-                div(style= "left:1500px; right:40px; bottom:60px; position:fixed; cursor:inherit; z-index: 10000;", 
-                    wellPanel(
-                      style = "padding: 8px; border-bottom: 1px solid #CCC; background: #EBEDF0;",
-                      HTML("Download a print of your map?"), actionButton("go", "Take a screenshot"))),
-                div(style= "left:1500px; right:40px; bottom:0px; position:fixed; cursor:inherit; z-index: 10000;", 
-                    wellPanel(
-                      style = "padding: 8px; border-bottom: 1px solid #CCC; background: #EBEDF0;",
-                      HTML("Download your map data?")))
+                
   )
 )
 
@@ -680,7 +686,7 @@ server <- function(input, output, session) {
         showNotification('Please select a category to assign.', '', duration = 5, type = 'warning')
         return()
       }
-
+      
       landuse_palette_code_selected <- as.numeric(input$radioInt)
       print(landuse_palette_code_selected)
       
