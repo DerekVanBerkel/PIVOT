@@ -607,9 +607,16 @@ server <- function(input, output, session) {
     }
     else {
       basemap_var <- input$field
-      bins <- quantile(user_basemap[[basemap_var]], na.rm=TRUE)
-      bmap_pal <- colorBin("Greys", domain = user_basemap[[basemap_var]], bins = bins)  # may want to change color ramp
-      
+      bins <- unique(quantile(user_basemap[[basemap_var]], na.rm=TRUE))
+      print(paste('binlength:', length(bins)))
+      if (length(bins) >= 2){
+        print('using bins')
+        bmap_pal <- colorBin("Greys", domain = user_basemap[[basemap_var]], bins = bins)  # may want to change color ramp
+      }
+      else {
+        showNotification('Selected attribute has too few values to display properly.', '', duration = 3, type = 'warning')
+        bmap_pal <- colorNumeric('Greys', domain = user_basemap[[basemap_var]])
+      }
       leafletProxy(mapId='PPGISmap') %>%
         removeShape(user_basemap) %>%
         addPolygons(data = user_basemap, 
