@@ -19,6 +19,7 @@ library(dashboardthemes)
 library(fontawesome)
 library(shinyBS)
 library(shinyjs)
+library(archive)
 
 #####################################################################################################
 ############################### definition of global varibles #######################################
@@ -225,12 +226,19 @@ load_spatial <- function(file_in){
     shppth <- sub('.\\.', 'shapefile.', file_in$datapath[shppth_idx])
     spatial_data <- catch_vec(shppth)
   }
-  else if (any(str_detect(file_in$datapath, '.zip'))){  # zipped shapefile
-    shppth <- sub('.\\....', '', file_in$datapath)  # get temporary file location
+  else if (any(str_detect(file_in$datapath, '.zip'))){  # zipped vector
+    shppth <- dirname(file_in$datapath)  # get temporary file location
     zip::unzip(file_in$datapath, exdir = shppth)  # unzip to temp location
-    shpname <- list.files(path = shppth, pattern = '\\.shp')[1]  # get name of shapefile in temp location
+    shpname <- list.files(path = shppth, pattern = '\\.shp|\\.geojson|\\.gpkg')[1]  # get name of shapefile in temp location
     req(shpname)  # if the zip has no shapefile, do not try to load it
-    spatial_data <- catch_vec(paste0(shppth, shpname))
+    spatial_data <- catch_vec(paste0(shppth, '/', shpname))
+  }
+  else if (any(str_detect(file_in$datapath, '.7z'))){  # archived vector
+    shppth <- dirname(file_in$datapath)  # get temporary file location
+    archive_extract(file_in$datapath, dir = shppth)
+    shpname <- list.files(path = shppth, pattern = '\\.shp|\\.geojson|\\.gpkg')[1]  # get name of shapefile in temp location
+    req(shpname)  # if the zip has no shapefile, do not try to load it
+    spatial_data <- catch_vec(paste0(shppth, '/', shpname))
   }
   else{ # if not a shapefile, proceed as normal
     spatial_data <<- catch_vec(file_in$datapath)
@@ -273,7 +281,7 @@ ui <- dashboardPage(
                 label = NULL, 
                 multiple = TRUE,
                 buttonLabel = "Browse to upload spatial data",
-                accept = c(".shp",".dbf",".sbn",".sbx",".shx",".prj", ".gpkg", ".geojson", ".zip")),
+                accept = c(".shp",".dbf",".sbn",".sbx",".shx",".prj", ".gpkg", ".geojson", ".zip", ".7z")),
       ##this function loads the mapping layer
       fluidRow(column(11, actionBttn(
         inputId = "clear_map",
@@ -298,7 +306,7 @@ ui <- dashboardPage(
                   label = NULL, 
                   multiple = TRUE,
                   buttonLabel = "Browse to upload spatial data",
-                  accept = c(".shp",".dbf",".sbn",".sbx",".shx",".prj", ".gpkg", ".geojson", ".zip")),
+                  accept = c(".shp",".dbf",".sbn",".sbx",".shx",".prj", ".gpkg", ".geojson", ".zip", ".7z")),
         bsPopover("icon2", "Add an additional map", "Explore your region and aid in decision-making. Press the Reload Map button when uploaded", trigger = "hover", placement = "bottom"),
         
         ## this function allows you to choose which field to visualize for the 
