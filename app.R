@@ -208,10 +208,18 @@ catch_vec <- function(file_path){
     spatial_data <<- Default_file
     showNotification('There was an error - please make sure you included all shapefile components. Loading default file instead.', '', duration = NULL, type='error')
   })
-  if ('geom' %in% colnames(spatial_data)){
-    spatial_data <- spatial_data %>% rename(geometry = geom)}
+  if ('geom' %in% colnames(spatial_data)){spatial_data <- spatial_data %>% rename(geometry = geom)}
   
-  return(spatial_data)
+  # catch non-polygon geometries
+  geotype <- st_geometry_type(spatial_data, by_geometry = FALSE)
+  if (geotype %in% c('MULTIPOLYGON', 'POLYGON')){
+    return(spatial_data)
+  }
+  else{
+    showNotification('Uploaded file does not have polygon geometry. Loading default file instead.', '', duration = NULL, type='error')
+    spatial_data <- Default_file
+    return(spatial_data)
+  }
 }
 
 # This function prepares uploaded data for being read by the catch_vec function.
