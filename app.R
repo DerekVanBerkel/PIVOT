@@ -42,6 +42,8 @@ VECTOR_FILE <<- st_read(system.file("shape/nc.shp", package="sf")) %>%
   dplyr::select(PPGIS_CODE, SELECTED, geometry) %>% ## everything()
   sf::st_transform(4326)
 
+test_vec <- st_read("H:\\My Drive\\RPGs\\Worldbuilding\\Hex_tutorial\\Tutorial_hex_grid.gpkg")
+
 Default_file <- VECTOR_FILE
 base_map_bounds <<- Default_file %>% 
   st_bbox() %>% 
@@ -202,6 +204,7 @@ catch_vec <- function(file_path){
     showNotification('There was an error - please make sure you included all shapefile components. Loading default file instead.', '', duration = NULL, type='error')
     spatial_data <- Default_file
   })
+  if ('geom' %in% colnames(spatial_data)){spatial_data <- spatial_data %>% rename(geometry = geom)}
   return(spatial_data)
 }
 
