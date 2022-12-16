@@ -45,7 +45,8 @@ VECTOR_FILE <<- st_read(system.file("shape/nc.shp", package="sf")) %>%
 
 test_vec <- st_read("H:\\My Drive\\RPGs\\Worldbuilding\\Hex_tutorial\\Tutorial_hex_grid.gpkg")
 
-Default_file <- VECTOR_FILE
+Default_file <<- VECTOR_FILE
+
 base_map_bounds <<- Default_file %>% 
   st_bbox() %>% 
   as.character()
@@ -196,16 +197,20 @@ createMap <- function() {
 # warning and return the default NC shapefile instead
 catch_vec <- function(file_path){ 
   tryCatch({
-    spatial_data <- st_read(file_path) %>%
+    spatial_data <<- st_read(file_path) %>%
       sf::st_transform(4326)
   }, warning = function(w) {
+    spatial_data <<- Default_file
     showNotification('There was an error - please make sure you included all shapefile components. Loading default file instead.', '', duration = NULL, type = 'error')
-    spatial_data <- Default_file
+    print('warned')
   }, error = function(e) {
+    print('errored')
+    spatial_data <<- Default_file
     showNotification('There was an error - please make sure you included all shapefile components. Loading default file instead.', '', duration = NULL, type='error')
-    spatial_data <- Default_file
   })
-  if ('geom' %in% colnames(spatial_data)){spatial_data <- spatial_data %>% rename(geometry = geom)}
+  if ('geom' %in% colnames(spatial_data)){
+    spatial_data <- spatial_data %>% rename(geometry = geom)}
+  
   return(spatial_data)
 }
 
@@ -230,19 +235,21 @@ load_spatial <- function(file_in){
     shppth <- dirname(file_in$datapath)  # get temporary file location
     zip::unzip(file_in$datapath, exdir = shppth)  # unzip to temp location
     shpname <- list.files(path = shppth, pattern = '\\.shp|\\.geojson|\\.gpkg')[1]  # get name of shapefile in temp location
-    req(shpname)  # if the zip has no shapefile, do not try to load it
+    #req(shpname)  # if the zip has no shapefile, do not try to load it
     spatial_data <- catch_vec(paste0(shppth, '/', shpname))
+    print('attempted zip load')
   }
   else if (any(str_detect(file_in$datapath, '.7z'))){  # archived vector
     shppth <- dirname(file_in$datapath)  # get temporary file location
     archive_extract(file_in$datapath, dir = shppth)
     shpname <- list.files(path = shppth, pattern = '\\.shp|\\.geojson|\\.gpkg')[1]  # get name of shapefile in temp location
-    req(shpname)  # if the zip has no shapefile, do not try to load it
+    #req(shpname)  # if the zip has no shapefile, do not try to load it
     spatial_data <- catch_vec(paste0(shppth, '/', shpname))
   }
   else{ # if not a shapefile, proceed as normal
-    spatial_data <<- catch_vec(file_in$datapath)
+    spatial_data <- catch_vec(file_in$datapath)
   }
+  print(summary(spatial_data))
   return(spatial_data)
 }
 
