@@ -19,7 +19,7 @@ library(dashboardthemes)
 library(fontawesome)
 library(shinyBS)
 library(shinyjs)
-library(archive)
+#library(archive)
 
 #####################################################################################################
 ############################### definition of global varibles #######################################
@@ -43,7 +43,6 @@ VECTOR_FILE <<- st_read(system.file("shape/nc.shp", package="sf")) %>%
   dplyr::select(PPGIS_CODE, SELECTED, geometry) %>% ## everything()
   sf::st_transform(4326)
 
-test_vec <- st_read("H:\\My Drive\\RPGs\\Worldbuilding\\Hex_tutorial\\Tutorial_hex_grid.gpkg")
 
 Default_file <<- VECTOR_FILE
 
@@ -271,7 +270,7 @@ load_spatial <- function(file_in){
 ui <- dashboardPage(
   
   dashboardHeader(title = tags$a(href='https://github.com/DerekVanBerkel/PIVOT',
-                                         tags$img(src='PPGIS_logo2.PNG',height="85%", width="107%")), titleWidth = '300'),
+                                 tags$img(src='PPGIS_logo3.png',height="85%", width="105%")), titleWidth = '300'),
   dashboardSidebar(
     width = 300,
     sidebarMenu(
@@ -281,16 +280,19 @@ ui <- dashboardPage(
       class = "sidebar",
       style = "height: 90vh; overflow-y: auto;",
       
-      p(),
-      ## We define the header outide of the widget as it also prompted the download, 
+      tags$p(style = "font-size: 12px;color: black;font-weight: bold;padding-left: 15px;padding-bottom: 0px",
+             span("This PPGIS tool is designed to support" ,br(), "community planning efforts, helping users" ,br(), "to explore their communities through" ,br(), "spatial data. By following the steps below," ,br(), "users can upload their own spatial data and" ,br(), "create categories that outline regions of the" ,br(), "map for planning purposes.")),
+      
+      hr(),
+      ## We define the header outside of the widget as it also prompted the download, 
       ## which interfered with the information button
       tags$p(style = "font-size: 16px;color: black;font-weight: bold;padding-left: 15px;padding-bottom: 0px",
-             span("1. Add base map layer for",br(), "planning and press Reload Map"),br(),
+             span("1. Add a base layer and press",br(), "Reload Basemap"),
              ##this defines the in-line info icon 
              span(icon("info-circle"), id = "icon1", style = "color: blue; 15px;")
       ),
       ## this function defines the info-circle text using the shinyBS library
-      bsPopover("icon1", "Choose spatial data", "This include .shp, .gpkg, and .geojson for the base layer that you will use for planning. *Note shapefile must be accomponied by necessary additional files (.) You can also press Reload Map to test the application using data from North Carolina", trigger = "hover", placement = "bottom"),
+      bsPopover("icon1", "Choose a basemap to", "In step 1, upload your own data or press “Reload Map” to test the application using North Carolina as a base map. Compatible file formats include .shp, .gpkg, and .geojson. *Note uploaded shapefiles must be accompanied by necessary additional files (i.e., .dbf, .prj, .shx)", trigger = "hover", placement = "bottom"),
       ## the widget prompts for uploading your data
       fileInput("filemap",
                 label = NULL, 
@@ -300,7 +302,7 @@ ui <- dashboardPage(
       ##this function loads the mapping layer
       fluidRow(column(11, actionBttn(
         inputId = "clear_map",
-        label = "Reload Map",
+        label = "Reload Basemap",
         color = "success",
         size = "md",
         style = "unite",
@@ -308,46 +310,47 @@ ui <- dashboardPage(
         block = TRUE
       ))),          
       
-      
+      hr(),
       ## initial upload of the mapping layer
       ## style formatting that approximates the widget headers below
-        tags$p(style = "font-size: 16px;color: black;font-weight: bold;padding-left: 15px;padding-bottom: 0px",
-               span("2. Optional step. Add a map",br(), "for veiwing and press Reload",br(), "Map"),
-               span(icon("info-circle"), id = "icon2", style = "color: blue")
-        ),
-        ## this widget allows you to upload additional layers for visualizing while
-        ## doing your ppgis exercise
-        fileInput("basemap_file",
-                  label = NULL, 
-                  multiple = TRUE,
-                  buttonLabel = "Browse to upload spatial data",
-                  accept = c(".shp",".dbf",".sbn",".sbx",".shx",".prj", ".gpkg", ".geojson", ".zip", ".7z")),
-        bsPopover("icon2", "Add an additional map", "Explore your region and aid in decision-making. Press the Reload Map button when uploaded", trigger = "hover", placement = "bottom"),
-        
-        ## this function allows you to choose which field to visualize for the 
-        ## additional map layer
-        selectInput("field", tags$p(style = "font-size: 16px;","Choose a measure from the optional map to display:"), 'N/A'),
-        
-        ##button to add the additional layer to the ui
-        fluidRow(column(11, actionBttn(
-          inputId = "reload_basemap",
-          label = "Reload Basemap",
-          color = "success",
-          size = "md",
-          style = "unite",
-          icon = icon("map"),
-          block = TRUE
-        ))),
+      tags$p(style = "font-size: 16px;color: black;font-weight: bold;padding-left: 15px;padding-bottom: 0px",
+             span("2. Add a map layer and press",br(), "Reload Map"),
+             span(icon("info-circle"), id = "icon2", style = "color: blue")
+      ),
+      ## this widget allows you to upload additional layers for visualizing while
+      ## doing your ppgis exercise
+      fileInput("basemap_file",
+                label = NULL, 
+                multiple = TRUE,
+                buttonLabel = "Browse to upload spatial data",
+                accept = c(".shp",".dbf",".sbn",".sbx",".shx",".prj", ".gpkg", ".geojson", ".zip", ".7z")),
+      bsPopover("icon2", "In step 2, add a map layer for viewing", "Add spatial data of interest to explore your community and aid in decision-making (i.e. National Flood Hazard layer). This is an optional step that can be ignored. Press the Reload Map button when uploaded. Compatible file formats include .shp, .gpkg, and .geojson. *Note uploaded shapefiles must be accompanied by necessary additional files (i.e., .dbf, .prj, .shx)", trigger = "hover", placement = "bottom"),
+      
+      ##button to add the additional layer to the ui
+      fluidRow(column(11, actionBttn(
+        inputId = "reload_basemap",
+        label = "Reload Map",
+        color = "success",
+        size = "md",
+        style = "unite",
+        icon = icon("map"),
+        block = TRUE
+      ))),
+      ## this function allows you to choose which field to visualize for the 
+      ## additional map layer
+      selectInput("field", tags$p(style = "font-size: 16px;padding-bottom: 0px","Choose a measure from the optional map to display:"), 'N/A'),
+      
+      
       
       hr(),
       fluidRow(column(3, verbatimTextOutput("value"))),
       ## text input to add new radio options (mapping categories)
       textInput("textinp",
                 tags$p(style = "font-size: 16px;",
-                       span("3. Type in categories for mapping and click Add Map Category"),
+                       span("3. Create new categories for mapping and click Add Map Category"),
                        span(icon("info-circle"), id = "icon3", style = "color: blue"))
                 , placeholder = "Type here"),
-      bsPopover("icon3", "Create categories for mapping", "For example, the category green space for prioritizing the location of these projects in your city. Press Add Map Category when you have finished typing", trigger = "hover", placement = "bottom"),
+      bsPopover("icon3", "In step 3, create new map categories", "These categories can be based on your needs. For example, type in the category “green space” to prioritize the location of these projects in your city. Press Add Map Category when you have finished typing", trigger = "hover", placement = "bottom"),
       
       
       ## action button to add new mapping categories
@@ -365,21 +368,21 @@ ui <- dashboardPage(
       ## this is radio button where you choose which category to add to the map
       awesomeRadio("radioInt",  
                    label = tags$p(style = "font-size: 16px;",
-                                  span("4. Choose categories and click on the map to prioritize"),
+                                  span("4. Choose a category and click on the map to create new map selections"),
                                   span(icon("info-circle"), id = "icon4", style = "color: blue")),
                    status= "success", 
                    choices=values,
                    selected = 'No Category'),
-      bsPopover("icon4", "Choose a mapping category", "Click the circle to left to choose mapping categories you want to add to the map. click the map to indicate these preferences", trigger = "hover", placement = "bottom"),
+      bsPopover("icon4", "In step 4. Map new categories", "Click the circle to the left to choose mapping categories you want to add to the map. Click the map to indicate these spatial preferences", trigger = "hover", placement = "bottom"),
       
       
       hr(),
       
       tags$p(style = "font-size: 16px;color: black;font-weight: bold;padding-left: 15px;padding-bottom: 0px",
-             span("5. Optional step. Download your",br(), "map or  data"),
+             span("5. Download your map or data"),
              span(icon("info-circle"), id = "icon5", style = "color: blue")
       ),
-      bsPopover("icon5", "Download your production", "For example, ", trigger = "hover", placement = "bottom"),
+      bsPopover("icon5", "Step 5, download your new map", "Download your new map as a jpeg or shapefile", trigger = "hover", placement = "bottom"),
       
       fluidRow(column(11, actionBttn(
         inputId = "go",
@@ -412,7 +415,7 @@ ui <- dashboardPage(
         "<br>"
       )),   
       
-     HTML(paste0(
+      HTML(paste0(
         "<script>",
         "var today = new Date();",
         "var yyyy = today.getFullYear();",
