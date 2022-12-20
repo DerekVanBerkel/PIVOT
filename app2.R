@@ -635,26 +635,26 @@ server <- function(input, output, session) {
   }, ignoreInit = TRUE)
   
   # refresh legend?
-  observe({
-    proxy <- leafletProxy("PPGISmap", data = VECTOR_FILE)
-    
-    # Remove any existing legend, and only if the legend is
-    # enabled, create a new one.
-    proxy %>% clearControls()
-    if (input$labbutton) {
-      #newMapLgd <- rv$values
-      #colorHex <- color_palette_list[1:length(newMapLgd)]
-      #print(colorHex)
-      proxy %>% addLegend(
-        values=newMapLgd,
-        position='bottomleft',
-        title="Legend of Categories",
-        opacity=0.6,
-        colors = COLOR_PAL,
-        labels = CAT_LIST
-      )
-    }
-  })
+  # observe({
+  #   proxy <- leafletProxy("PPGISmap", data = VECTOR_FILE)
+  #   
+  #   # Remove any existing legend, and only if the legend is
+  #   # enabled, create a new one.
+  #   proxy %>% clearControls()
+  #   if (input$labbutton) {
+  #     #newMapLgd <- rv$values
+  #     #colorHex <- color_palette_list[1:length(newMapLgd)]
+  #     #print(colorHex)
+  #     proxy %>% addLegend(
+  #       values=newMapLgd,
+  #       position='bottomleft',
+  #       title="Legend of Categories",
+  #       opacity=0.6,
+  #       colors = COLOR_PAL,
+  #       labels = CAT_LIST
+  #     )
+  #   }
+  # })
   
   # Event to handle clicking polygons to assign categories
   observeEvent(input$PPGISmap_shape_click, {
