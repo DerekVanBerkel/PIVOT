@@ -39,14 +39,14 @@ PPGISr <- function(base_map, information_layers, mapping_categories, mapping_col
     user_basemap <- information_layers
   }
   if (!exists("mapping_categories")) {
-    CAT_LIST <- c("High Density Development", "Street Trees", "Infrastructure Need")
+    CAT_LIST <- c("No Category", "High Density Development", "Street Trees", "Infrastructure Need")
   } else {
-    CAT_LIST <- mapping_categories
+    CAT_LIST <- c("No Category", mapping_categories)
   }
   if (!exists("mapping_colors")) {
-    COLOR_PAL <- c("#FF0000", "#00FF00", "#0000FF")
+    COLOR_PAL <- c("#FFFFFF00", "#FF0000", "#00FF00", "#0000FF")
   } else {
-    COLOR_PAL <- mapping_colors
+    COLOR_PAL <- c("#FFFFFF00", mapping_colors)
   }
   
 #####################################################################################################
@@ -376,7 +376,7 @@ ui <- dashboardPage(
                                   span("4. Choose categories and click on the map to prioritize"),
                                   span(icon("info-circle"), id = "icon4", style = "color: blue")),
                    status= "success", 
-                   choices=values,
+                   choices=CAT_LIST,
                    selected = 'No Category'),
       bsPopover("icon4", "Choose a mapping category", "Click the circle to left to choose mapping categories you want to add to the map. click the map to indicate these preferences", trigger = "hover", placement = "bottom"),
       
