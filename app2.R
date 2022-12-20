@@ -78,12 +78,12 @@ PPGISr <- function(base_map, information_layers, mapping_categories, mapping_col
 options(shiny.maxRequestSize=1000000000) 
 #values <- c("No Category" = NA)
 ## These are the viewable map fields
-bmap_fields <- NULL
-##This is the viewable map
-user_basemap <- NULL
-## this is the viewable map type
-basemap_type <- 'None'
-basemap_groups <<-c("OSM (default)", "Toner", "Toner Lite", "Open Topo Map", "ESRI World Imagery")
+# bmap_fields <- NULL
+# ##This is the viewable map
+# user_basemap <- NULL
+# ## this is the viewable map type
+# basemap_type <- 'None'
+# basemap_groups <<-c("OSM (default)", "Toner", "Toner Lite", "Open Topo Map", "ESRI World Imagery")
 ##Color palettes
 #COLOR_PAL = c(RColorBrewer::brewer.pal(n = 9, name = "Set1")) # for color assignments for polygons
 COLOR_PAL2 = c("#ffffff", COLOR_PAL) # for legend
@@ -246,49 +246,49 @@ createMap <- function() {
 # This function is designed to allow attempts at loading vector files without 
 # crashing the app. If an improper shapefile is loaded, it will raise an error 
 # warning and return the default NC shapefile instead
-catch_vec <- function(file_path){ 
-  tryCatch({
-    spatial_data <- st_read(file_path) %>%
-      sf::st_transform(4326)
-  }, warning = function(w) {
-    showNotification('There was an error - please make sure you included all shapefile components. Loading default file instead.', '', duration = NULL, type = 'error')
-    spatial_data <- Default_file
-  }, error = function(e) {
-    showNotification('There was an error - please make sure you included all shapefile components. Loading default file instead.', '', duration = NULL, type='error')
-    spatial_data <- Default_file
-  })
-  return(spatial_data)
-}
+# catch_vec <- function(file_path){ 
+#   tryCatch({
+#     spatial_data <- st_read(file_path) %>%
+#       sf::st_transform(4326)
+#   }, warning = function(w) {
+#     showNotification('There was an error - please make sure you included all shapefile components. Loading default file instead.', '', duration = NULL, type = 'error')
+#     spatial_data <- Default_file
+#   }, error = function(e) {
+#     showNotification('There was an error - please make sure you included all shapefile components. Loading default file instead.', '', duration = NULL, type='error')
+#     spatial_data <- Default_file
+#   })
+#   return(spatial_data)
+# }
 
 # This function prepares uploaded data for being read by the catch_vec function.
 # It renames shapefiles in a way that is readable to st_read and it unzips .zip
 # files. It relies on catch_vec to handle errors if the resulting files are 
 # problematic.
-load_spatial <- function(file_in){
-  if(any(str_detect(file_in$datapath, '.shp'))){  # if shapefile
-    # the upload gives the files unique names, so st_read() won't recognize 
-    # them as belonging to the same shapefile. Thus we rename them.
-    for (path in file_in$datapath){
-      newpath <- sub('.\\.', 'shapefile.', path)
-      file.copy(path, newpath)  # create new set of properly named files
-    }
-    # locate which file is the .shp file to feed into st_read()
-    shppth_idx <- which(str_detect(file_in$datapath, '\\.shp'))
-    shppth <- sub('.\\.', 'shapefile.', file_in$datapath[shppth_idx])
-    spatial_data <- catch_vec(shppth)
-  }
-  else if (any(str_detect(file_in$datapath, '.zip'))){  # zipped shapefile
-    shppth <- sub('.\\....', '', file_in$datapath)  # get temporary file location
-    zip::unzip(file_in$datapath, exdir = shppth)  # unzip to temp location
-    shpname <- list.files(path = shppth, pattern = '\\.shp')[1]  # get name of shapefile in temp location
-    req(shpname)  # if the zip has no shapefile, do not try to load it
-    spatial_data <- catch_vec(paste0(shppth, shpname))
-  }
-  else{ # if not a shapefile, proceed as normal
-    spatial_data <<- catch_vec(file_in$datapath)
-  }
-  return(spatial_data)
-}
+# load_spatial <- function(file_in){
+#   if(any(str_detect(file_in$datapath, '.shp'))){  # if shapefile
+#     # the upload gives the files unique names, so st_read() won't recognize 
+#     # them as belonging to the same shapefile. Thus we rename them.
+#     for (path in file_in$datapath){
+#       newpath <- sub('.\\.', 'shapefile.', path)
+#       file.copy(path, newpath)  # create new set of properly named files
+#     }
+#     # locate which file is the .shp file to feed into st_read()
+#     shppth_idx <- which(str_detect(file_in$datapath, '\\.shp'))
+#     shppth <- sub('.\\.', 'shapefile.', file_in$datapath[shppth_idx])
+#     spatial_data <- catch_vec(shppth)
+#   }
+#   else if (any(str_detect(file_in$datapath, '.zip'))){  # zipped shapefile
+#     shppth <- sub('.\\....', '', file_in$datapath)  # get temporary file location
+#     zip::unzip(file_in$datapath, exdir = shppth)  # unzip to temp location
+#     shpname <- list.files(path = shppth, pattern = '\\.shp')[1]  # get name of shapefile in temp location
+#     req(shpname)  # if the zip has no shapefile, do not try to load it
+#     spatial_data <- catch_vec(paste0(shppth, shpname))
+#   }
+#   else{ # if not a shapefile, proceed as normal
+#     spatial_data <<- catch_vec(file_in$datapath)
+#   }
+#   return(spatial_data)
+# }
 
 
 #####################################################################################################
@@ -355,7 +355,7 @@ ui <- dashboardPage(
         # 
         ## this function allows you to choose which field to visualize for the 
         ## additional map layer
-        selectInput("field", tags$p(style = "font-size: 16px;","Choose a measure from the optional map to display:"), 'N/A'),
+        selectInput("field", tags$p(style = "font-size: 16px;","Choose a measure from the optional map to display:"), choices = bmap_fields[!bmap_fields == 'geometry']),
         
         ##button to add the additional layer to the ui
         # fluidRow(column(11, actionBttn(
