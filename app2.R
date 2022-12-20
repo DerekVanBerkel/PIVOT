@@ -22,7 +22,7 @@ library(shinyjs)
 
 
 PPGISr <- function(base_map = NULL, information_layers = NULL, mapping_categories = c("High Density Development", "Street Trees", "Infrastructure Need"), mapping_colors = c('red', 'blue', 'green')){ 
-  if (!exists("base_map")) {
+  if (is.null(base_map)) {
     VECTOR_FILE <<- st_read(system.file("shape/nc.shp", package="sf")) %>%
       dplyr::mutate(PPGIS_CODE = as.character(row_number()),SELECTED = NA) %>%
       dplyr::select(PPGIS_CODE, SELECTED, geometry) %>% ## everything()
