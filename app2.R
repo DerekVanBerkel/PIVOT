@@ -33,20 +33,43 @@ PPGISr <- function(base_map, information_layers, mapping_categories, mapping_col
     sf::st_transform(4326)
     
   }
-  if (!exists("information_layers")) {
-    user_basemap <- NULL
-  } else {
-    user_basemap <- information_layers
+  # if (!exists("information_layers")) {
+  #   user_basemap <- NULL
+  # } else {
+  #   user_basemap <- information_layers
+  # }
+  
+  if(is.null(information_layers)){  # if no file
+    basemap_type <<- 'None'
+    basemap_groups <<-c("OSM (default)", "Toner", "Toner Lite", "Open Topo Map", "ESRI World Imagery")
   }
+  else if (tools::file_ext(information_layers) == 'tif'){  # if it is a .tif raster
+    basemap_type <<- 'raster'
+    basemap_name <<- toString(information_layers)
+    user_basemap <<- raster(information_layers)
+    basemap_groups <<- c("OSM (default)", "Toner", "Toner Lite", "Open Topo Map", "ESRI World Imagery", basemap_name)
+    bmap_fields <<- NULL
+  }
+  else {  # if a vector
+    basemap_name <<- toString(information_layers)
+    user_basemap <<- st_read(information_layers)
+    basemap_type <<- 'vector'
+    basemap_groups <<- c("OSM (default)", "Toner", "Toner Lite", "Open Topo Map", "ESRI World Imagery", basemap_name)
+    bmap_fields <<- colnames(user_basemap %>% dplyr::select(where(is.numeric)))
+    # Update the field selector with the basemap's fields
+  }
+    
+
   if (!exists("mapping_categories")) {
-    CAT_LIST <- c("No Category", "High Density Development", "Street Trees", "Infrastructure Need")
+    CAT_LIST <- setNames(c(NA, 1:3), c("No Category", "High Density Development", "Street Trees", "Infrastructure Need"))
   } else {
-    CAT_LIST <- c("No Category", mapping_categories)
+    cat_len <- length(mapping_categories)
+    CAT_LIST <- setNames(c(NA, 1:cat_len), c("No Category", mapping_categories))
   }
   if (!exists("mapping_colors")) {
-    COLOR_PAL <- c("#FFFFFF00", "#FF0000", "#00FF00", "#0000FF")
+    COLOR_PAL <- c("#FF0000", "#00FF00", "#0000FF")
   } else {
-    COLOR_PAL <- c("#FFFFFF00", mapping_colors)
+    COLOR_PAL <- c(mapping_colors)
   }
   
 #####################################################################################################
@@ -494,9 +517,22 @@ server <- function(input, output, session) {
         position='bottomleft',
         title="Legend of Categories",
         opacity=0.6,
-        colors = COLOR_PAL,
+        colors = COLOR_PAL2,
         labels = CAT_LIST
-      )
+      ) %>%
+      #  If there is a basemap, either display the raster or vector file.
+      {if(is.null(user_basemap)) . 
+        else if (basemap_type == 'raster') addRasterImage(map = ., x = user_basemap, group = basemap_name) 
+        else addPolygons(map = ., 
+                         data = user_basemap,
+                         group = basemap_name, 
+                         weight = 0.5,
+                         fillOpacity = 0,
+                         color = 'blue',
+                         options = pathOptions(pane = "base_layers"))} %>%
+      addLayersControl(
+        baseGroups = basemap_groups,
+        options = layersControlOptions(collapsed = FALSE))
   })
   
   # clear_map has been reworked and now just checks if a new vector map is 
@@ -550,63 +586,26 @@ server <- function(input, output, session) {
   })
   
   # Event for clicking basemap button. Checks if basemap exists and loads it in
-  observeEvent({
-    basemap_groups <<-c("OSM (default)", "Toner", "Toner Lite", "Open Topo Map", "ESRI World Imagery")
-    if(basemap_type == 'raster'){
-      leafletProxy(mapId='PPGISmap') %>%
-        clearImages() %>% 
-        addLayersControl(
-          baseGroups = basemap_groups,
-          options = layersControlOptions(collapsed = FALSE))
-    }
-    else if(basemap_type == 'vector'){
-      leafletProxy(mapId='PPGISmap') %>%
-        clearGroup(basemap_name) %>%
-        addLayersControl(
-          baseGroups = basemap_groups,
-          options = layersControlOptions(collapsed = FALSE))
-    }
-    
-    # Here, we figure out if we have uploaded a basemap, if it is raster or vector, and load it
-    if(is.null(input$basemap_file)){  # if no file
-      user_basemap <<- NULL
-      basemap_type <<- 'None'
-      basemap_groups <<-c("OSM (default)", "Toner", "Toner Lite", "Open Topo Map", "ESRI World Imagery")
-      updateSelectInput(inputId = 'field', choices = 'N/A')
-      return()
-    }
-    else if (tools::file_ext(input$basemap_file$name[1]) == 'tif'){  # if it is a .tif raster
-      basemap_type <<- 'raster'
-      user_basemap <<- raster(input$basemap_file$datapath)
-      basemap_name <<- toString(input$basemap_file$name[1])
-      basemap_groups <<- c("OSM (default)", "Toner", "Toner Lite", "Open Topo Map", "ESRI World Imagery", basemap_name)
-      bmap_fields <<- NULL
-      updateSelectInput(inputId = 'field', choices = 'N/A')
-    }
-    else {  # if a vector
-      user_basemap <<- load_spatial(input$basemap_file)
-      basemap_type <<- 'vector'
-      basemap_name <<- toString(input$basemap_file$name[1])
-      basemap_groups <<- c("OSM (default)", "Toner", "Toner Lite", "Open Topo Map", "ESRI World Imagery", basemap_name)
-      bmap_fields <<- colnames(user_basemap %>% dplyr::select(where(is.numeric)))
-      # Update the field selector with the basemap's fields
-      updateSelectInput(inputId = 'field', choices = bmap_fields[!bmap_fields == 'geometry']) # trying to load geometry column causes crash
-    }
-    leafletProxy(mapId='PPGISmap') %>%
-      #  If there is a basemap, either display the raster or vector file.
-      {if(is.null(user_basemap)) . 
-        else if (basemap_type == 'raster') addRasterImage(map = ., x = user_basemap, group = basemap_name) 
-        else addPolygons(map = ., 
-                         data = user_basemap,
-                         group = basemap_name, 
-                         weight = 0.5,
-                         fillOpacity = 0,
-                         color = 'blue',
-                         options = pathOptions(pane = "base_layers"))} %>%
-      addLayersControl(
-        baseGroups = basemap_groups,
-        options = layersControlOptions(collapsed = FALSE))
-  })
+  # observeEvent({
+  #   # basemap_groups <<-c("OSM (default)", "Toner", "Toner Lite", "Open Topo Map", "ESRI World Imagery")
+  #   # if(basemap_type == 'raster'){
+  #   #   leafletProxy(mapId='PPGISmap') %>%
+  #   #     clearImages() %>% 
+  #   #     addLayersControl(
+  #   #       baseGroups = basemap_groups,
+  #   #       options = layersControlOptions(collapsed = FALSE))
+  #   # }
+  #   # else if(basemap_type == 'vector'){
+  #   #   leafletProxy(mapId='PPGISmap') %>%
+  #   #     clearGroup(basemap_name) %>%
+  #   #     addLayersControl(
+  #   #       baseGroups = basemap_groups,
+  #   #       options = layersControlOptions(collapsed = FALSE))
+  #   # }
+  #   
+  #   # Here, we figure out if we have uploaded a basemap, if it is raster or vector, and load it
+  #   leafletProxy(mapId='PPGISmap') 
+  # })
   
   #  When users select a basemap field to display:
   #  First, check if a valid basemap exists and has fields to display. Then, 
@@ -701,10 +700,10 @@ server <- function(input, output, session) {
       if(is.null(input$radioInt)){
         showNotification('Please select a category to assign.', '', duration = 5, type = 'warning')
         return()}
-      if(length(rv$values) < as.numeric(input$radioInt)){
-        showNotification('Please select a category to assign.', '', duration = 5, type = 'warning')
-        return()
-      }
+      # if(length(rv$values) < as.numeric(input$radioInt)){
+      #   showNotification('Please select a category to assign.', '', duration = 5, type = 'warning')
+      #   return()
+      # }
       
       palette_code_selected <- as.numeric(input$radioInt)
       #print(palette_code_selected)
@@ -728,8 +727,8 @@ server <- function(input, output, session) {
           group='base_polygons',
           weight=1.5,
           fillOpacity=0.5,
-          color = ~COLOR_PAL2(as.factor(SELECTED)),
-          fillColor = ~COLOR_PAL(as.factor(SELECTED)),
+          color = ~map_palette2(as.factor(SELECTED)),
+          fillColor = ~map_palette(as.factor(SELECTED)),
           options = pathOptions(pane = "poly_layer")
         )
       print(VECTOR_FILE$SELECTED)
