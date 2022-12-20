@@ -42,6 +42,8 @@ PPGISr <- function(base_map = NULL, information_layers = NULL, mapping_categorie
   if(is.null(information_layers)){  # if no file
     basemap_type <<- 'None'
     basemap_groups <<-c("OSM (default)", "Toner", "Toner Lite", "Open Topo Map", "ESRI World Imagery")
+    bmap_fields <<- NULL
+    user_basemap <<- NULL
   }
   else if (tools::file_ext(information_layers) == 'tif'){  # if it is a .tif raster
     basemap_type <<- 'raster'
