@@ -63,7 +63,7 @@ basemap_type <- 'None'
 basemap_groups <<-c("OSM (default)", "Toner", "Toner Lite", "Open Topo Map", "ESRI World Imagery")
 ##Color palettes
 #COLOR_PAL = c(RColorBrewer::brewer.pal(n = 9, name = "Set1")) # for color assignments for polygons
-COLOR_PAL2 = c("#ffffff", color_palette_list2) # for legend
+COLOR_PAL2 = c("#ffffff", COLOR_PAL) # for legend
 map_palette <- colorFactor(palette = COLOR_PAL, domain=1:length(COLOR_PAL), na.color = "#FFFFFF00") # for fill
 map_palette2 <- colorFactor(palette = COLOR_PAL, domain=1:length(COLOR_PAL), na.color = "black") # for borders
 ###use updateradiobutton, and text input https://shiny.rstudio.com/reference/shiny/0.14/updateRadioButtons.html
