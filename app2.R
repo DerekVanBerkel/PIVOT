@@ -21,7 +21,7 @@ library(shinyBS)
 library(shinyjs)
 
 
-PPGISr <- function(base_map, information_layers, mapping_categories, mapping_colors){ 
+PPGISr <- function(base_map = NULL, information_layers = NULL, mapping_categories = c("High Density Development", "Street Trees", "Infrastructure Need"), mapping_colors = c('red', 'blue', 'green')){ 
   if (!exists("base_map")) {
     VECTOR_FILE <<- st_read(system.file("shape/nc.shp", package="sf")) %>%
       dplyr::mutate(PPGIS_CODE = as.character(row_number()),SELECTED = NA) %>%
@@ -59,18 +59,13 @@ PPGISr <- function(base_map, information_layers, mapping_categories, mapping_col
     # Update the field selector with the basemap's fields
   }
     
+  cat_len <- length(mapping_categories)
+  if (cat_len != length(mapping_colors)){
+    stop('Number of mapping categories must match number of colors.')
+  }
+  CAT_LIST <- setNames(c(NA, 1:cat_len), c("No Category", mapping_categories))
+  COLOR_PAL <- c(mapping_colors)
 
-  if (!exists("mapping_categories")) {
-    CAT_LIST <- setNames(c(NA, 1:3), c("No Category", "High Density Development", "Street Trees", "Infrastructure Need"))
-  } else {
-    cat_len <- length(mapping_categories)
-    CAT_LIST <- setNames(c(NA, 1:cat_len), c("No Category", mapping_categories))
-  }
-  if (!exists("mapping_colors")) {
-    COLOR_PAL <- c("#FF0000", "#00FF00", "#0000FF")
-  } else {
-    COLOR_PAL <- c(mapping_colors)
-  }
   
 #####################################################################################################
 ############################### definition of global varibles #######################################
@@ -518,7 +513,7 @@ server <- function(input, output, session) {
         title="Legend of Categories",
         opacity=0.6,
         colors = COLOR_PAL2,
-        labels = CAT_LIST
+        labels = names(CAT_LIST)
       ) %>%
       #  If there is a basemap, either display the raster or vector file.
       {if(is.null(user_basemap)) . 
