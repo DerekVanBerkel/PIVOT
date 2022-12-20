@@ -34,9 +34,9 @@ PPGISr <- function(base_map, information_layers, mapping_categories, mapping_col
     
   }
   if (!exists("information_layers")) {
-    Additional_layer <- NULL
+    user_basemap <- NULL
   } else {
-    Additional_layer <- Read_in
+    user_basemap <- information_layers
   }
   if (!exists("mapping_categories")) {
     CAT_LIST <- c("High Density Development", "Street Trees", "Infrastructure Need")
@@ -53,9 +53,12 @@ PPGISr <- function(base_map, information_layers, mapping_categories, mapping_col
 ############################### definition of global varibles #######################################
 #####################################################################################################
 options(shiny.maxRequestSize=1000000000) 
-values <- c("No Category" = NA)
+#values <- c("No Category" = NA)
+## These are the viewable map fields
 bmap_fields <- NULL
+##This is the viewable map
 user_basemap <- NULL
+## this is the viewable map type
 basemap_type <- 'None'
 basemap_groups <<-c("OSM (default)", "Toner", "Toner Lite", "Open Topo Map", "ESRI World Imagery")
 ##Color palettes
