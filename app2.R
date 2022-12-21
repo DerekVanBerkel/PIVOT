@@ -21,7 +21,7 @@ library(shinyBS)
 library(shinyjs)
 
 
-PPGISr <- function(base_map = NULL, information_layers = NULL, mapping_categories = c("High Density Development", "Street Trees", "Infrastructure Need"), mapping_colors = c("#FF0000", "#00FF00", "#0000FF")){ 
+PPGISr <- function(base_map = NULL, information_layers = NULL, mapping_categories = c("High Density Development", "Street Trees", "Infrastructure Need"), mapping_colors = c("#880015", "#22b14c", "#00a2e8")){ 
   if (is.null(base_map)) {
     VECTOR_FILE <<- st_read(system.file("shape/nc.shp", package="sf")) %>%
       dplyr::mutate(PPGIS_CODE = as.character(row_number()),SELECTED = NA) %>%
@@ -33,11 +33,6 @@ PPGISr <- function(base_map = NULL, information_layers = NULL, mapping_categorie
     sf::st_transform(4326)
   
   }
-  # if (!exists("information_layers")) {
-  #   user_basemap <- NULL
-  # } else {
-  #   user_basemap <- information_layers
-  # }
   
   if(is.null(information_layers)){  # if no file
     basemap_type <<- 'None'
@@ -73,26 +68,12 @@ PPGISr <- function(base_map = NULL, information_layers = NULL, mapping_categorie
   ############################### definition of global varibles #######################################
   #####################################################################################################
   options(shiny.maxRequestSize=1000000000) 
-  #values <- c("No Category" = NA)
-  ## These are the viewable map fields
-  # bmap_fields <- NULL
-  # ##This is the viewable map
-  # user_basemap <- NULL
-  # ## this is the viewable map type
-  # basemap_type <- 'None'
-  # basemap_groups <<-c("OSM (default)", "Toner", "Toner Lite", "Open Topo Map", "ESRI World Imagery")
+  
   ##Color palettes
-  #COLOR_PAL = c(RColorBrewer::brewer.pal(n = 9, name = "Set1")) # for color assignments for polygons
   COLOR_PAL2 = c("#ffffff", COLOR_PAL) # for legend
   map_palette <- colorFactor(palette = COLOR_PAL, domain=1:length(COLOR_PAL), na.color = "#FFFFFF00") # for fill
   map_palette2 <- colorFactor(palette = COLOR_PAL, domain=1:length(COLOR_PAL), na.color = "black") # for borders
   ###use updateradiobutton, and text input https://shiny.rstudio.com/reference/shiny/0.14/updateRadioButtons.html
-  
-  ## load shapefile and assign it as the default file
-  # VECTOR_FILE <<- st_read(system.file("shape/nc.shp", package="sf")) %>%
-  #   dplyr::mutate(PPGIS_CODE = as.character(row_number()),SELECTED = NA) %>%
-  #   dplyr::select(PPGIS_CODE, SELECTED, geometry) %>% ## everything()
-  #   sf::st_transform(4326)
   
   Default_file <- VECTOR_FILE
   base_map_bounds <<- Default_file %>% 
@@ -240,53 +221,6 @@ PPGISr <- function(base_map = NULL, information_layers = NULL, mapping_categorie
     return(m)
   }
   
-  # This function is designed to allow attempts at loading vector files without 
-  # crashing the app. If an improper shapefile is loaded, it will raise an error 
-  # warning and return the default NC shapefile instead
-  # catch_vec <- function(file_path){ 
-  #   tryCatch({
-  #     spatial_data <- st_read(file_path) %>%
-  #       sf::st_transform(4326)
-  #   }, warning = function(w) {
-  #     showNotification('There was an error - please make sure you included all shapefile components. Loading default file instead.', '', duration = NULL, type = 'error')
-  #     spatial_data <- Default_file
-  #   }, error = function(e) {
-  #     showNotification('There was an error - please make sure you included all shapefile components. Loading default file instead.', '', duration = NULL, type='error')
-  #     spatial_data <- Default_file
-  #   })
-  #   return(spatial_data)
-  # }
-  
-  # This function prepares uploaded data for being read by the catch_vec function.
-  # It renames shapefiles in a way that is readable to st_read and it unzips .zip
-  # files. It relies on catch_vec to handle errors if the resulting files are 
-  # problematic.
-  # load_spatial <- function(file_in){
-  #   if(any(str_detect(file_in$datapath, '.shp'))){  # if shapefile
-  #     # the upload gives the files unique names, so st_read() won't recognize 
-  #     # them as belonging to the same shapefile. Thus we rename them.
-  #     for (path in file_in$datapath){
-  #       newpath <- sub('.\\.', 'shapefile.', path)
-  #       file.copy(path, newpath)  # create new set of properly named files
-  #     }
-  #     # locate which file is the .shp file to feed into st_read()
-  #     shppth_idx <- which(str_detect(file_in$datapath, '\\.shp'))
-  #     shppth <- sub('.\\.', 'shapefile.', file_in$datapath[shppth_idx])
-  #     spatial_data <- catch_vec(shppth)
-  #   }
-  #   else if (any(str_detect(file_in$datapath, '.zip'))){  # zipped shapefile
-  #     shppth <- sub('.\\....', '', file_in$datapath)  # get temporary file location
-  #     zip::unzip(file_in$datapath, exdir = shppth)  # unzip to temp location
-  #     shpname <- list.files(path = shppth, pattern = '\\.shp')[1]  # get name of shapefile in temp location
-  #     req(shpname)  # if the zip has no shapefile, do not try to load it
-  #     spatial_data <- catch_vec(paste0(shppth, shpname))
-  #   }
-  #   else{ # if not a shapefile, proceed as normal
-  #     spatial_data <<- catch_vec(file_in$datapath)
-  #   }
-  #   return(spatial_data)
-  # }
-  
   
   #####################################################################################################
   ############################### definition of user interface ########################################
@@ -406,35 +340,7 @@ PPGISr <- function(base_map = NULL, information_layers = NULL, mapping_categorie
   ############################### definition of server ################################################
   #####################################################################################################
   
-  
   server <- function(input, output, session) {
-    
-    ###observe user categories input
-    #value <- c("No Category" = NA)
-    #rv <- reactiveValues(values=value)
-    #print(rv)
-    
-    # Event to add new categories to list
-    # observeEvent(input$labbutton,{
-    #   req(input$textinp)
-    #   newVal <- length(rv$values)  
-    #   
-    #   if(input$textinp %in% names(rv$values)){
-    #     showNotification('Cannot add duplicate category.', '', duration = 3, type = 'warning')
-    #     return()
-    #   }
-    #   if(length(rv$values) > 9){
-    #     showNotification('Cannot add more than 9 categories. If you need to reset the list, click Reload Map.', '', duration = 3, type = 'warning')
-    #     return()
-    #   }
-    #   
-    #   names(newVal) <- input$textinp
-    #   rv$values <<- c(rv$values, newVal)
-    #   updateAwesomeRadio(session,inputId ="radioInt",choices=rv$values)
-    #   print('New values:')
-    #   print(rv$values)
-    #   print(length(rv$values))
-    # })
     
     # Renders the map output
     output$PPGISmap <- renderLeaflet({
@@ -480,77 +386,11 @@ PPGISr <- function(base_map = NULL, information_layers = NULL, mapping_categorie
           options = layersControlOptions(collapsed = FALSE))
     })
     
-    # clear_map has been reworked and now just checks if a new vector map is 
-    # uploaded and then uses a proxy to add it to the leaflet map
-    # observeEvent(input$clear_map, {  # reload all map contents with whatever file was uploaded
-    
-    # if (is.null(input$filemap)) {  # if no upload, use default
-    #   VECTOR_FILE <<- Default_file
-    #   is_selected <<- NA
-    #   print(summary(VECTOR_FILE))
-    #   
-    #   base_map_bounds <<- VECTOR_FILE %>% 
-    #     st_bbox() %>% 
-    #     as.character()
-    # } 
-    # else {
-    #   VECTOR_FILE <<- load_spatial(input$filemap) %>%
-    #     dplyr::mutate(PPGIS_CODE = as.character(row_number()),SELECTED = NA) %>%
-    #     dplyr::select(PPGIS_CODE, SELECTED, geometry) ## everything()
-    #   
-    #   # clear selections from previous file
-    #   is_selected <<- NA
-    #   base_map_bounds <<- VECTOR_FILE %>% 
-    #     st_bbox() %>% 
-    #     as.character()
-    # }
-    # leafletProxy(mapId = 'PPGISmap') %>%
-    #   clearGroup('base_polygons') %>%
-    #   addPolygons(
-    #     data=VECTOR_FILE,
-    #     layerId=~PPGIS_CODE,
-    #     group='base_polygons',
-    #     weight=1.5,
-    #     fillOpacity=0,
-    #     color = 'black',
-    #     options = pathOptions(pane = "poly_layer")) %>%
-    #   fitBounds(base_map_bounds[1], base_map_bounds[2], base_map_bounds[3], base_map_bounds[4])
-    # 
-    # reset categories
-    #   rv$values <- c("No Category" = NA)
-    #   landuse_palette_code_selected <<- NA
-    #   updateAwesomeRadio(session,inputId ="radioInt",choices=rv$values)
-    #   print(length(rv$values))
-    #   print('radio status:')
-    #   print(input$radioInt)
-    # })
     
     # Event to take a screenshot
     observeEvent(input$go, {
       screenshot(id="PPGISmap")
     })
-    
-    # Event for clicking basemap button. Checks if basemap exists and loads it in
-    # observeEvent({
-    #   # basemap_groups <<-c("OSM (default)", "Toner", "Toner Lite", "Open Topo Map", "ESRI World Imagery")
-    #   # if(basemap_type == 'raster'){
-    #   #   leafletProxy(mapId='PPGISmap') %>%
-    #   #     clearImages() %>% 
-    #   #     addLayersControl(
-    #   #       baseGroups = basemap_groups,
-    #   #       options = layersControlOptions(collapsed = FALSE))
-    #   # }
-    #   # else if(basemap_type == 'vector'){
-    #   #   leafletProxy(mapId='PPGISmap') %>%
-    #   #     clearGroup(basemap_name) %>%
-    #   #     addLayersControl(
-    #   #       baseGroups = basemap_groups,
-    #   #       options = layersControlOptions(collapsed = FALSE))
-    #   # }
-    #   
-    #   # Here, we figure out if we have uploaded a basemap, if it is raster or vector, and load it
-    #   leafletProxy(mapId='PPGISmap') 
-    # })
     
     #  When users select a basemap field to display:
     #  First, check if a valid basemap exists and has fields to display. Then, 
@@ -578,28 +418,7 @@ PPGISr <- function(base_map = NULL, information_layers = NULL, mapping_categorie
       }
     }, ignoreInit = TRUE)
     
-    # refresh legend?
-    # observe({
-    #   proxy <- leafletProxy("PPGISmap", data = VECTOR_FILE)
-    #   
-    #   # Remove any existing legend, and only if the legend is
-    #   # enabled, create a new one.
-    #   proxy %>% clearControls()
-    #   if (input$labbutton) {
-    #     #newMapLgd <- rv$values
-    #     #colorHex <- color_palette_list[1:length(newMapLgd)]
-    #     #print(colorHex)
-    #     proxy %>% addLegend(
-    #       values=newMapLgd,
-    #       position='bottomleft',
-    #       title="Legend of Categories",
-    #       opacity=0.6,
-    #       colors = COLOR_PAL,
-    #       labels = CAT_LIST
-    #     )
-    #   }
-    # })
-    
+   
     # Event to handle clicking polygons to assign categories
     observeEvent(input$PPGISmap_shape_click, {
       polygon_clicked <- input$PPGISmap_shape_click
@@ -645,16 +464,9 @@ PPGISr <- function(base_map = NULL, information_layers = NULL, mapping_categorie
         if(is.null(input$radioInt)){
           showNotification('Please select a category to assign.', '', duration = 5, type = 'warning')
           return()}
-        # if(length(rv$values) < as.numeric(input$radioInt)){
-        #   showNotification('Please select a category to assign.', '', duration = 5, type = 'warning')
-        #   return()
-        # }
+        
         
         palette_code_selected <- as.numeric(input$radioInt)
-        #print(palette_code_selected)
-        
-        # Get current table selected
-        #row_clicked <- input$groups_table_cell_clicked
         
         # substitutes selected value for polygon with group number
         VECTOR_FILE[row_idx, ]$SELECTED <<- palette_code_selected
